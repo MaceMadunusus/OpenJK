@@ -1,3 +1,21 @@
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 // cg_text.c -- 
 
 // this line must stay at top so the whole PCH thing works...
@@ -169,7 +187,7 @@ void CG_CaptionTextStop(void)
 //
 // returns 0 if failed, else strlen...
 //
-static int cg_SP_GetStringTextStringWithRetry( LPCSTR psReference, char *psDest, int iSizeofDest)
+static int cg_SP_GetStringTextStringWithRetry( const char *psReference, char *psDest, int iSizeofDest)
 {
 	int iReturn;
 
@@ -199,7 +217,7 @@ static int cg_SP_GetStringTextStringWithRetry( LPCSTR psReference, char *psDest,
 //	the "filename" part of which should be the same as the StripEd reference we're looking for in the current 
 //	level's string package...
 //
-void CG_CaptionText( const char *str, int sound, int y ) 
+void CG_CaptionText( const char *str, int sound) 
 {
 	const char	*s, *holds;
 	int i;
@@ -222,7 +240,7 @@ void CG_CaptionText( const char *str, int sound, int y )
 	{	
 #ifndef FINAL_BUILD
 		// we only care about some sound dirs...
-		if (!strnicmp(str,"sound/chars/",12))	// whichever language it is, it'll be pathed as english at this point
+		if (!Q_stricmpn(str,"sound/chars/",12))	// whichever language it is, it'll be pathed as english at this point
 		{
 			Com_Printf("WARNING: CG_CaptionText given invalid text key :'%s'\n",str);
 		}
@@ -240,7 +258,7 @@ void CG_CaptionText( const char *str, int sound, int y )
 	if (in_camera) {
 		cg.captionTextY = SCREEN_HEIGHT - (client_camera.bar_height_dest/2);	// ths is now a centre'd Y, not a start Y
 	} else {	//get above the hud
-		cg.captionTextY = (int) (0.88f * ((float)SCREEN_HEIGHT - (float)fontHeight * 1.5f));	// do NOT move this, it has to fit in between the weapon HUD and the datapad update.
+		cg.captionTextY = (int) (0.88f*((float)SCREEN_HEIGHT - (float)fontHeight * 1.5f));	// do NOT move this, it has to fit in between the weapon HUD and the datapad update.
 	}
 	cg.captionTextCurrentLine = 0;
 
@@ -541,8 +559,8 @@ void CG_ScrollText( const char *str, int iPixelWidth )
 			//
 			cg.printText[i][ strlen(cg.printText[i])-1 ] = '\0';	// kill the CR
 			i++;
-			assert (i < (sizeof(cg.printText)/sizeof(cg.printText[0])) );
-			if (i >= (sizeof(cg.printText)/sizeof(cg.printText[0])) )
+			assert (i < (int)(sizeof(cg.printText)/sizeof(cg.printText[0])) );
+			if (i >= (int)(sizeof(cg.printText)/sizeof(cg.printText[0])) )
 			{
 				break;
 			}
@@ -569,7 +587,7 @@ void CG_ScrollText( const char *str, int iPixelWidth )
 			cg.printText[i][ psBestLineBreakSrcPos - holds ] = '\0';
 			holds = s = psBestLineBreakSrcPos;
 			i++;
-			assert (i < (sizeof(cg.printText)/sizeof(cg.printText[0])) );
+			assert (i < (int)(sizeof(cg.printText)/sizeof(cg.printText[0])) );
 			cg.scrollTextLines++;
 		}
 	}
@@ -584,7 +602,6 @@ void CG_ScrollText( const char *str, int iPixelWidth )
 #define SCROLL_LPM (1/50.0) // 1 line per 50 ms
 void CG_DrawScrollText(void)
 {		
-	char	*start;
 	int		i;
 	int		x,y;	
 	const int fontHeight = (int) (1.5f * (float) cgi_R_Font_HeightPixels(cgs.media.qhFontMedium, 1.0f));	// taiwanese & japanese need 1.5 fontheight spacing
@@ -621,8 +638,6 @@ void CG_DrawScrollText(void)
 		{
 			break;
 		}
-
-		start = cg.printText[i];
 
 //		w = cgi_R_Font_StrLenPixels(cg.printText[i], cgs.media.qhFontMedium, 1.0f);	
 //		if (w)
@@ -698,7 +713,7 @@ CG_DrawCenterString
 void CG_DrawCenterString( void ) 
 {
 	char	*start;
-	int		l;
+	unsigned int l;
 	int		x, y, w;
 	float	*color;
 

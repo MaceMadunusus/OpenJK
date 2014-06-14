@@ -1,9 +1,25 @@
-// leave this line at the top of all AI_xxxx.cpp files for PCH reasons...
-#include "g_headers.h"
+/*
+This file is part of Jedi Academy.
 
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
 
 #include "b_local.h"
 #include "g_nav.h"
+#include "../cgame/cg_local.h"
+#include "g_functions.h"
 
 gentity_t *CreateMissile( vec3_t org, vec3_t dir, float vel, int life, gentity_t *owner, qboolean altFire = qfalse );
 extern gitem_t	*FindItemForAmmo( ammo_t ammo );
@@ -219,7 +235,7 @@ ImperialProbe_Hunt
 
 void ImperialProbe_Hunt( qboolean visible, qboolean advance )
 {
-	float	distance, speed;
+	float	speed;
 	vec3_t	forward;
 
 	NPC_SetAnim( NPC, SETANIM_BOTH, BOTH_RUN1, SETANIM_FLAG_OVERRIDE|SETANIM_FLAG_HOLD );
@@ -252,7 +268,7 @@ void ImperialProbe_Hunt( qboolean visible, qboolean advance )
 	else
 	{
 		VectorSubtract( NPC->enemy->currentOrigin, NPC->currentOrigin, forward );
-		distance = VectorNormalize( forward );
+		/*distance = */VectorNormalize( forward );
 	}
 
 	speed = HUNTER_FORWARD_BASE_SPEED + HUNTER_FORWARD_MULTIPLIER * g_spskill->integer;
@@ -268,7 +284,6 @@ void ImperialProbe_FireBlaster(void)
 {
 	vec3_t	muzzle1,enemy_org1,delta1,angleToEnemy1;
 	static	vec3_t	forward, vright, up;
-	static	vec3_t	muzzle;
 	gentity_t	*missile;
 	mdxaBone_t	boltMatrix;
 
@@ -347,7 +362,7 @@ void ImperialProbe_Ranged( qboolean visible, qboolean advance )
 			delay_max = 1500;
 		}
 
-		TIMER_Set( NPC, "attackDelay", Q_irand( 500, 3000 ) );
+		TIMER_Set( NPC, "attackDelay", Q_irand( delay_min, delay_max ) );
 		ImperialProbe_FireBlaster();
 //		ucmd.buttons |= BUTTON_ATTACK;
 	}

@@ -1,3 +1,21 @@
+/*
+This file is part of Jedi Knight 2.
+
+    Jedi Knight 2 is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Knight 2 is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Knight 2.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 // leave this line at the top for all g_xxxx.cpp files...
 #include "g_headers.h"
 
@@ -976,7 +994,7 @@ void Use_BinaryMover( gentity_t *ent, gentity_t *other, gentity_t *activator )
 				ent->fly_sound_debounce_time = level.time + 5000;
 				text = "cp @INGAME_NEED_KEY_TO_OPEN";
 				//FIXME: temp message, only on certain difficulties?, graphic instead of text?
-				gi.SendServerCommand( NULL, text );
+				gi.SendServerCommand( 0, text );
 				return;
 			}
 		}
@@ -2531,7 +2549,7 @@ void security_panel_use( gentity_t *self, gentity_t *other, gentity_t *activator
 	}
 	if ( INV_SecurityKeyCheck( activator, self->message ) )
 	{//congrats!
-		gi.SendServerCommand( NULL, "cp @INGAME_SECURITY_KEY_UNLOCKEDDOOR" );
+		gi.SendServerCommand( 0, "cp @INGAME_SECURITY_KEY_UNLOCKEDDOOR" );
 		//use targets
 		G_UseTargets( self, activator );
 		//take key
@@ -2551,11 +2569,11 @@ void security_panel_use( gentity_t *self, gentity_t *other, gentity_t *activator
 	{//failure sound/display
 		if ( activator->message )
 		{//have a key, just the wrong one
-			gi.SendServerCommand( NULL, "cp @INGAME_INCORRECT_KEY" );
+			gi.SendServerCommand( 0, "cp @INGAME_INCORRECT_KEY" );
 		}
 		else
 		{//don't have a key at all
-			gi.SendServerCommand( NULL, "cp @INGAME_NEED_SECURITY_KEY" );
+			gi.SendServerCommand( 0, "cp @INGAME_NEED_SECURITY_KEY" );
 		}
 		G_UseTargets2( self, activator, self->target2 );
 		//FIXME: change display?  Maybe shader animmap change?

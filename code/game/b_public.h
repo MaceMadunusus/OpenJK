@@ -1,8 +1,26 @@
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 #ifndef __B_PUBLIC_H__
 #define __B_PUBLIC_H__
 
 #include "bstate.h"
-#include "AI.h"
+#include "ai.h"
 
 #define NPCAI_CHECK_WEAPON		0x00000001
 #define NPCAI_BURST_WEAPON		0x00000002
@@ -82,8 +100,6 @@
 #define AID_LOSTPATH	0x00000008	//Cannot make a valid movement due to lack of connections
 
 //#endif //__DEBUG
-
-//extern qboolean showWaypoints;
 
 typedef enum {VIS_UNKNOWN, VIS_NOT, VIS_PVS, VIS_360, VIS_FOV, VIS_SHOOT} visibility_t;
 typedef enum {SPOT_ORIGIN, SPOT_CHEST, SPOT_HEAD, SPOT_HEAD_LEAN, SPOT_WEAPON, SPOT_LEGS, SPOT_GROUND} spot_t;
@@ -171,7 +187,6 @@ typedef struct
 	int			shotTime;
 	int			burstCount;
 	int			burstMin;
-	int			burstMean;
 	int			burstMax;
 	int			burstSpacing;
 	int			attackHold;

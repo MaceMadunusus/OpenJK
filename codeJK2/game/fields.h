@@ -1,3 +1,21 @@
+/*
+This file is part of Jedi Knight 2.
+
+    Jedi Knight 2 is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Knight 2 is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Knight 2.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 // Filename:-	fields.h
 //
 
@@ -12,12 +30,12 @@
 #define MAX_GHOULINST_SIZE	16384
 
 #ifndef FOFS
-#define	FOFS(x) ((int)&(((gentity_t *)0)->x))	// usually already defined in qshared.h
+#define	FOFS(x) offsetof(gentity_t, x)	// usually already defined in qshared.h
 #endif
-#define	STOFS(x) ((int)&(((spawn_temp_t *)0)->x))
-#define	LLOFS(x) ((int)&(((level_locals_t *)0)->x))
-#define	CLOFS(x) ((int)&(((gclient_t *)0)->x))
-#define NPCOFS(x) ((int)&(((gNPC_t *)0)->x)) 
+#define STOFS(x) offsetof(spawn_temp_t, x)
+#define LLOFS(x) offsetof(level_locals_t, x)
+#define CLOFS(x) offsetof(gclient_t, x)
+#define NPCOFS(x) offsetof(gNPC_t, x) 
 //
 #define strFOFS(x)	 #x,FOFS(x)
 #define	strSTOFS(x)  #x,STOFS(x)

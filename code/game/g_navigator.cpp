@@ -1,3 +1,21 @@
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 ////////////////////////////////////////////////////////////////////////////////////////
 // RAVEN SOFTWARE - STAR WARS: JK II
 //  (c) 2002 Activision
@@ -7,9 +25,10 @@
 //
 //
 ////////////////////////////////////////////////////////////////////////////////////////
-#include "g_headers.h"
 
-
+#include "../cgame/cg_local.h"
+#include "g_shared.h"
+#include "g_nav.h"
 
 ////////////////////////////////////////////////////////////////////////////////////////
 // HFile Bindings
@@ -42,25 +61,22 @@ extern vec3_t		playerMaxs;
 #include "b_local.h"
 #include "g_navigator.h"
 #if !defined(RAGL_GRAPH_VS_INC)
-	#include "..\Ragl\graph_vs.h"
+	#include "../Ragl/graph_vs.h"
 #endif
 #if !defined(RATL_GRAPH_REGION_INC)
-	#include "..\Ragl\graph_region.h"
+	#include "../Ragl/graph_region.h"
 #endif
-//#if !defined(RATL_GRAPH_TRIANGULATE_INC)
-//	#include "..\Ragl\graph_triangulate.h"
-//#endif
 #if !defined(RATL_VECTOR_VS_INC)
-	#include "..\Ratl\vector_vs.h"
+	#include "../Ratl/vector_vs.h"
 #endif
 #if !defined(RUFL_HSTRING_INC)
-	#include "..\Rufl\hstring.h"
+	#include "../Rufl/hstring.h"
 #endif
 #if !defined(RUFL_HFILE_INC)
-	#include "..\Rufl\hfile.h"
+	#include "../Rufl/hfile.h"
 #endif
 #if !defined(RAVL_BOUNDS_INC)
-	#include "..\Ravl\CBounds.h"
+	#include "../Ravl/CBounds.h"
 #endif
 
 
@@ -79,12 +95,7 @@ namespace NAV
 {
 	enum
 	{
-#ifdef _XBOX
-		// now 11 bytes each
-		NUM_NODES			= 1024,	// Question for VV- is this big enough for all the levels?  if so, we should use it too...
-#else
 		NUM_NODES			= 1024,
-#endif
 		// now 5 bytes each
 		NUM_EDGES			= 3*NUM_NODES,
 		NUM_EDGES_PER_NODE	= 20,
@@ -103,15 +114,8 @@ namespace NAV
 		BIAS_TOOSMALL		= 10000,
 
 		NULL_PATH_USER_INDEX= -1,
-#ifdef _XBOX
-		// This may not be safe, but I REALLY need memory. Better testing will reveal that
-		// these don't work, but in quick tests these numbers were sufficient.
-		MAX_PATH_USERS		= 60,
-		MAX_PATH_SIZE		= 50,
-#else
 		MAX_PATH_USERS		= 100,
 		MAX_PATH_SIZE		= NUM_NODES/7,
-#endif
 
 		Z_CULL_OFFSET		= 60,
 
@@ -182,7 +186,7 @@ public:
 		WN_NOAUTOCONNECT,
 		WN_MAX
 	};
-	ratl::bits_vs<EWayNodeFlags::WN_MAX>	mFlags;
+	ratl::bits_vs<WN_MAX>	mFlags;
 
 	////////////////////////////////////////////////////////////////////////////////////
 	// Access Operator (For Cells)(For Triangulation)
@@ -242,7 +246,7 @@ public:
 
 		WE_MAX
 	};
-	ratl::bits_vs<EWayEdgeFlags::WE_MAX>	mFlags;		// Should be only one int
+	ratl::bits_vs<WE_MAX>	mFlags;		// Should be only one int
 
 
 	////////////////////////////////////////////////////////////////////////////////////
@@ -527,7 +531,7 @@ public:
 	////////////////////////////////////////////////////////////////////////////////////
 	virtual		bool	can_be_invalid(const CWayEdge& Edge) const
 	{
-		return (Edge.mFlags.get_bit(CWayEdge::EWayEdgeFlags::WE_CANBEINVAL));
+		return (Edge.mFlags.get_bit(CWayEdge::WE_CANBEINVAL));
 	}
 
 
@@ -538,14 +542,14 @@ public:
 	{
 		// If The Actor Can't Fly, But This Is A Flying Edge, It's Invalid
 		//-----------------------------------------------------------------
-		if (mActor && Edge.mFlags.get_bit(CWayEdge::EWayEdgeFlags::WE_FLYING) && mActor->NPC && !(mActor->NPC->scriptFlags&SCF_NAV_CAN_FLY))
+		if (mActor && Edge.mFlags.get_bit(CWayEdge::WE_FLYING) && mActor->NPC && !(mActor->NPC->scriptFlags&SCF_NAV_CAN_FLY))
 		{
 			return false;
 		}
 
 		// If The Actor Can't Fly, But This Is A Flying Edge, It's Invalid
 		//-----------------------------------------------------------------
-		if (mActor && Edge.mFlags.get_bit(CWayEdge::EWayEdgeFlags::WE_JUMPING) && mActor->NPC && !(mActor->NPC->scriptFlags&SCF_NAV_CAN_JUMP))
+		if (mActor && Edge.mFlags.get_bit(CWayEdge::WE_JUMPING) && mActor->NPC && !(mActor->NPC->scriptFlags&SCF_NAV_CAN_JUMP))
 		{
 			return false;
 		}
@@ -635,12 +639,12 @@ public:
 		{//we had a breakable in our way, now it's gone, see if there is anything else in the way
 			if ( NAV::TestEdge( Edge.mNodeA, Edge.mNodeB, false ) )
 			{//clear it
-				Edge.mFlags.clear_bit(CWayEdge::EWayEdgeFlags::WE_BLOCKING_BREAK);
+				Edge.mFlags.clear_bit(CWayEdge::WE_BLOCKING_BREAK);
 			}
 			//NOTE: if this fails with the SC_LARGE size 
 		}
 
-		return (Edge.mFlags.get_bit(CWayEdge::EWayEdgeFlags::WE_VALID));
+		return (Edge.mFlags.get_bit(CWayEdge::WE_VALID));
 	}
 
 	////////////////////////////////////////////////////////////////////////////////////
@@ -713,14 +717,14 @@ public:
 		Edge.mEntityNum		= ENTITYNUM_NONE;
 		Edge.mOwnerNum		= ENTITYNUM_NONE;
 		Edge.mFlags.clear();
-		Edge.mFlags.set_bit(CWayEdge::EWayEdgeFlags::WE_VALID);
+		Edge.mFlags.set_bit(CWayEdge::WE_VALID);
 		if (CanBeInvalid)
 		{
-			Edge.mFlags.set_bit(CWayEdge::EWayEdgeFlags::WE_CANBEINVAL);
+			Edge.mFlags.set_bit(CWayEdge::WE_CANBEINVAL);
 		}
 		if (OnHull)
 		{
-			Edge.mFlags.set_bit(CWayEdge::EWayEdgeFlags::WE_ONHULL);
+			Edge.mFlags.set_bit(CWayEdge::WE_ONHULL);
 		}
 	}
 };
@@ -1181,7 +1185,6 @@ bool			NAV::LoadFromFile(const char *filename, int checksum)
 	mNodeNames.clear();
 	mNearestNavSort.clear();
 
-#ifndef _XBOX
 	if (SAVE_LOAD)
 	{
 		hfile	navFile(va("maps/%s.navNEW"));
@@ -1195,7 +1198,6 @@ bool			NAV::LoadFromFile(const char *filename, int checksum)
 		navFile.close();
 		return true;
 	}
-#endif
 	return false;
 }
 
@@ -1221,8 +1223,8 @@ bool			NAV::TestEdge( TNodeHandle NodeA, TNodeHandle NodeB, qboolean IsDebugEdge
 	const char*	aName = (a.mName.empty())?(mLocStringA):(a.mName.c_str());
 	const char*	bName = (b.mName.empty())?(mLocStringB):(b.mName.c_str());
 
-	float		radius = (at.Size()==CWayEdge::EWayEdgeFlags::WE_SIZE_LARGE)?(SC_LARGE_RADIUS):(SC_MEDIUM_RADIUS);
-	float		height = (at.Size()==CWayEdge::EWayEdgeFlags::WE_SIZE_LARGE)?(SC_LARGE_HEIGHT):(SC_MEDIUM_HEIGHT);
+	float		radius = (at.Size()==CWayEdge::WE_SIZE_LARGE)?(SC_LARGE_RADIUS):(SC_MEDIUM_RADIUS);
+	float		height = (at.Size()==CWayEdge::WE_SIZE_LARGE)?(SC_LARGE_HEIGHT):(SC_MEDIUM_HEIGHT);
 
 	Mins[0] = Mins[1] = (radius) * -1.0f;
 	Maxs[0] = Maxs[1] = (radius);
@@ -1250,12 +1252,12 @@ bool			NAV::TestEdge( TNodeHandle NodeA, TNodeHandle NodeB, qboolean IsDebugEdge
 
 	// Check For A Flying Edge
 	//-------------------------
-	if (a.mFlags.get_bit(CWayNode::EWayNodeFlags::WN_FLOATING) || b.mFlags.get_bit(CWayNode::EWayNodeFlags::WN_FLOATING))
+	if (a.mFlags.get_bit(CWayNode::WN_FLOATING) || b.mFlags.get_bit(CWayNode::WN_FLOATING))
 	{
-		at.mFlags.set_bit(CWayEdge::EWayEdgeFlags::WE_FLYING);
-		if (!a.mFlags.get_bit(CWayNode::EWayNodeFlags::WN_FLOATING) || !b.mFlags.get_bit(CWayNode::EWayNodeFlags::WN_FLOATING))
+		at.mFlags.set_bit(CWayEdge::WE_FLYING);
+		if (!a.mFlags.get_bit(CWayNode::WN_FLOATING) || !b.mFlags.get_bit(CWayNode::WN_FLOATING))
 		{
-			at.mFlags.set_bit(CWayEdge::EWayEdgeFlags::WE_CANBEINVAL);
+			at.mFlags.set_bit(CWayEdge::WE_CANBEINVAL);
 		}
 	}
 
@@ -1280,21 +1282,21 @@ bool			NAV::TestEdge( TNodeHandle NodeA, TNodeHandle NodeB, qboolean IsDebugEdge
 		//--------------------------------------
 		if (!Q_stricmp("func_door", ent->classname))
 		{
-			at.mFlags.set_bit(CWayEdge::EWayEdgeFlags::WE_BLOCKING_DOOR);
+			at.mFlags.set_bit(CWayEdge::WE_BLOCKING_DOOR);
 		}
 		else if (
 			!Q_stricmp("func_wall", ent->classname) ||
 			!Q_stricmp("func_static", ent->classname) ||
 			!Q_stricmp("func_usable", ent->classname))
 		{
-			at.mFlags.set_bit(CWayEdge::EWayEdgeFlags::WE_BLOCKING_WALL);
+			at.mFlags.set_bit(CWayEdge::WE_BLOCKING_WALL);
 		}
 		else if (
 			!Q_stricmp("func_glass", ent->classname) || 
 			!Q_stricmp("func_breakable", ent->classname) ||
 			!Q_stricmp("misc_model_breakable", ent->classname))
 		{
-			at.mFlags.set_bit(CWayEdge::EWayEdgeFlags::WE_BLOCKING_BREAK);
+			at.mFlags.set_bit(CWayEdge::WE_BLOCKING_BREAK);
 		}
 		else if (ent->NPC || ent->s.number==0)
 		{
@@ -1389,7 +1391,7 @@ bool			NAV::TestEdge( TNodeHandle NodeA, TNodeHandle NodeB, qboolean IsDebugEdge
 		{
 			ent->wayedge		= atHandle;
 			at.mEntityNum		= EntHit;
-			at.mFlags.set_bit(CWayEdge::EWayEdgeFlags::WE_CANBEINVAL);
+			at.mFlags.set_bit(CWayEdge::WE_CANBEINVAL);
 
 			// Add It To The Edge Map
 			//------------------------
@@ -1468,7 +1470,7 @@ bool			NAV::TestEdge( TNodeHandle NodeA, TNodeHandle NodeB, qboolean IsDebugEdge
 			//-----------------------------------------------------
 			else if (at.BlockingBreakable())
 			{//we'll do the trace again later if this ent gets broken
-				at.mFlags.clear_bit(CWayEdge::EWayEdgeFlags::WE_VALID);
+				at.mFlags.clear_bit(CWayEdge::WE_VALID);
 			}
 		}
 	}
@@ -1620,20 +1622,20 @@ bool			NAV::LoadFromEntitiesAndSaveToFile(const char *filename, int checksum)
 		at				= &(*nodeIter);
 		atRoof			= at->mPoint;
 		atFloor			= at->mPoint;
-		if (at->mFlags.get_bit(CWayNode::EWayNodeFlags::WN_DROPTOFLOOR))
+		if (at->mFlags.get_bit(CWayNode::WN_DROPTOFLOOR))
 		{
 			atFloor[2]	-= MAX_EDGE_FLOOR_DIST;
 		}
 		atFloor[2]		-= (MAX_EDGE_FLOOR_DIST * 1.5f);
 		atOnFloor		= !ViewTrace(atRoof, atFloor);
-		if (at->mFlags.get_bit(CWayNode::EWayNodeFlags::WN_DROPTOFLOOR))
+		if (at->mFlags.get_bit(CWayNode::WN_DROPTOFLOOR))
 		{
 			at->mPoint		= mViewTrace.endpos;
 			at->mPoint[2]	+= 5.0f;
 		}
 		else if (!atOnFloor && (at->mType==PT_WAYNODE || at->mType==PT_GOALNODE))
 		{
-			at->mFlags.set_bit(CWayNode::EWayNodeFlags::WN_FLOATING);
+			at->mFlags.set_bit(CWayNode::WN_FLOATING);
 		}
 	}
 
@@ -1697,22 +1699,22 @@ bool			NAV::LoadFromEntitiesAndSaveToFile(const char *filename, int checksum)
 						//-----------------------------------------------
 						if (tgtNum == (NAV::NUM_TARGETS-1))
 						{
-							mGraph.get_edge(edge).mFlags.set_bit(CWayEdge::EWayEdgeFlags::WE_JUMPING);
+							mGraph.get_edge(edge).mFlags.set_bit(CWayEdge::WE_JUMPING);
 						}
-						mGraph.get_edge(edge).mFlags.set_bit(CWayEdge::EWayEdgeFlags::WE_DESIGNERPLACED);
+						mGraph.get_edge(edge).mFlags.set_bit(CWayEdge::WE_DESIGNERPLACED);
 						continue;
 					}
 					
 					// Setup The Edge
 					//----------------
 					mUser.setup_edge(atToTgt, atHandle, tgtHandle, false, mGraph.get_node(atHandle), mGraph.get_node(tgtHandle), false);
-					atToTgt.mFlags.set_bit(CWayEdge::EWayEdgeFlags::WE_DESIGNERPLACED);
+					atToTgt.mFlags.set_bit(CWayEdge::WE_DESIGNERPLACED);
 
 					// If It Is The Jump Edge (Last Target), Mark It
 					//-----------------------------------------------
 					if (tgtNum == (NAV::NUM_TARGETS-1))
 					{
-						atToTgt.mFlags.set_bit(CWayEdge::EWayEdgeFlags::WE_JUMPING);
+						atToTgt.mFlags.set_bit(CWayEdge::WE_JUMPING);
 					}
 
 					// Now Tell The Graph Which Edge Index To Store Between The Two Points
@@ -1725,7 +1727,7 @@ bool			NAV::LoadFromEntitiesAndSaveToFile(const char *filename, int checksum)
 
 		// If It Is A Combat Or Goal Nav, Try To "Auto Connect" To A Few Nearby Way Points
 		//---------------------------------------------------------------------------------
-		if (!at->mFlags.get_bit(CWayNode::EWayNodeFlags::WN_NOAUTOCONNECT) && 
+		if (!at->mFlags.get_bit(CWayNode::WN_NOAUTOCONNECT) && 
 			(at->mType==NAV::PT_COMBATNODE || at->mType==NAV::PT_GOALNODE))
 		{
 			// Get The List Of Nodes For This Cell Of The Map
@@ -1860,11 +1862,11 @@ bool			NAV::LoadFromEntitiesAndSaveToFile(const char *filename, int checksum)
 		const char*	bName = (b.mName.empty())?(mLocStringB):(b.mName.c_str());
 
 
-		if (at.mFlags.get_bit(CWayEdge::EWayEdgeFlags::WE_JUMPING))
+		if (at.mFlags.get_bit(CWayEdge::WE_JUMPING))
 		{
-			at.mFlags.set_bit(CWayEdge::EWayEdgeFlags::WE_SIZE_LARGE);
-			at.mFlags.set_bit(CWayEdge::EWayEdgeFlags::WE_CANBEINVAL);
-			at.mFlags.set_bit(CWayEdge::EWayEdgeFlags::WE_DESIGNERPLACED);
+			at.mFlags.set_bit(CWayEdge::WE_SIZE_LARGE);
+			at.mFlags.set_bit(CWayEdge::WE_CANBEINVAL);
+			at.mFlags.set_bit(CWayEdge::WE_DESIGNERPLACED);
 			continue;
 		}
 
@@ -1874,8 +1876,8 @@ bool			NAV::LoadFromEntitiesAndSaveToFile(const char *filename, int checksum)
 		bool	CanGo		= false;
 		bool	IsDebugEdge = 
 			(g_nav1->string[0] && g_nav2->string[0] && 
-			(!stricmp(*(a.mName), g_nav1->string) || !stricmp(*(b.mName), g_nav1->string)) && 
-			(!stricmp(*(a.mName), g_nav2->string) || !stricmp(*(b.mName), g_nav2->string)));
+			(!Q_stricmp(*(a.mName), g_nav1->string) || !Q_stricmp(*(b.mName), g_nav1->string)) && 
+			(!Q_stricmp(*(a.mName), g_nav2->string) || !Q_stricmp(*(b.mName), g_nav2->string)));
 
 		// For debugging a connection between two known points:
 		//------------------------------------------------------
@@ -1888,7 +1890,7 @@ bool			NAV::LoadFromEntitiesAndSaveToFile(const char *filename, int checksum)
 
 		// Try Large
 		//-----------
-		at.mFlags.set_bit(CWayEdge::EWayEdgeFlags::WE_SIZE_LARGE);
+		at.mFlags.set_bit(CWayEdge::WE_SIZE_LARGE);
 		if (IsDebugEdge)
 		{
 			gi.Printf("Nav(%s)<->(%s): Attempting Size Large...\n", aName, bName);
@@ -1899,8 +1901,8 @@ bool			NAV::LoadFromEntitiesAndSaveToFile(const char *filename, int checksum)
 		CanGo = TestEdge( at.mNodeA, at.mNodeB, IsDebugEdge );
 		if (!CanGo)
 		{
-			at.mFlags.clear_bit(CWayEdge::EWayEdgeFlags::WE_SIZE_LARGE);
-			at.mFlags.set_bit(CWayEdge::EWayEdgeFlags::WE_SIZE_MEDIUM);
+			at.mFlags.clear_bit(CWayEdge::WE_SIZE_LARGE);
+			at.mFlags.set_bit(CWayEdge::WE_SIZE_MEDIUM);
 			if (IsDebugEdge)
 			{
 				gi.Printf("Nav(%s)<->(%s): Attempting Size Medium...\n", aName, bName);
@@ -1971,7 +1973,7 @@ bool			NAV::LoadFromEntitiesAndSaveToFile(const char *filename, int checksum)
 	for (int RemIndex=0;RemIndex<ToBeRemoved->size(); RemIndex++)
 	{
 		CWayEdge& at = mGraph.get_edge((*ToBeRemoved)[RemIndex]);
-		if (at.mFlags.get_bit(CWayEdge::EWayEdgeFlags::WE_DESIGNERPLACED))
+		if (at.mFlags.get_bit(CWayEdge::WE_DESIGNERPLACED))
 		{
 			hstring		aHstr = mGraph.get_node(at.mNodeA).mName;
 			hstring		bHstr = mGraph.get_node(at.mNodeB).mName;
@@ -2000,7 +2002,7 @@ bool			NAV::LoadFromEntitiesAndSaveToFile(const char *filename, int checksum)
 		{
 			at->mPoint.ToStr(mLocStringA);
 
-			at->mFlags.set_bit(CWayNode::EWayNodeFlags::WN_ISLAND);
+			at->mFlags.set_bit(CWayNode::WN_ISLAND);
 			mIslandCount++;
 			if (at->mType==NAV::PT_COMBATNODE)
 			{
@@ -2037,11 +2039,11 @@ bool			NAV::LoadFromEntitiesAndSaveToFile(const char *filename, int checksum)
 	for (nodeIter=mGraph.nodes_begin(); nodeIter!=mGraph.nodes_end(); nodeIter++)
 	{
 		at				= &(*nodeIter);
-		if (at->mFlags.get_bit(CWayNode::EWayNodeFlags::WN_ISLAND))
+		if (at->mFlags.get_bit(CWayNode::WN_ISLAND))
 		{
 			mRegion.assign_region(nodeIter.index(), mIslandRegion);
 		}
-	//	else if (at->mFlags.get_bit(CWayNode::EWayNodeFlags::WN_FLOATING))
+	//	else if (at->mFlags.get_bit(CWayNode::WN_FLOATING))
 	//	{
 	//		mRegion.assign_region(nodeIter.index(), mAirRegion);
 	//	}
@@ -2118,7 +2120,6 @@ bool			NAV::LoadFromEntitiesAndSaveToFile(const char *filename, int checksum)
 
 	// PHASE VI: SAVE TO FILE
 	//========================
-#ifndef _XBOX
 	if (SAVE_LOAD)
 	{
 		hfile	navFile(va("maps/%s.navNEW"));
@@ -2131,7 +2132,6 @@ bool			NAV::LoadFromEntitiesAndSaveToFile(const char *filename, int checksum)
 		navFile.save(&mCells, sizeof(mCells));
 		navFile.close();
 	}
-#endif
 	return true;
 }
 
@@ -2267,7 +2267,7 @@ void			NAV::WayEdgesNowClear(gentity_t* ent)
 				if (EdgeHandle!=0)
 				{
 					CWayEdge& edge = mGraph.get_edge(EdgeHandle);
-					edge.mFlags.set_bit(CWayEdge::EWayEdgeFlags::WE_VALID);
+					edge.mFlags.set_bit(CWayEdge::WE_VALID);
 					edge.mEntityNum = ENTITYNUM_NONE;
 					edge.mOwnerNum = ENTITYNUM_NONE;
 				}
@@ -2328,11 +2328,11 @@ void			NAV::SpawnedPoint(gentity_t* ent, NAV::EPointType type)
 	node.mFlags.clear();
 	if (type==NAV::PT_WAYNODE && (ent->spawnflags & 2))
 	{
-		node.mFlags.set_bit(CWayNode::EWayNodeFlags::WN_DROPTOFLOOR);
+		node.mFlags.set_bit(CWayNode::WN_DROPTOFLOOR);
 	}
 	if (ent->spawnflags & 4)
 	{
-		node.mFlags.set_bit(CWayNode::EWayNodeFlags::WN_NOAUTOCONNECT);
+		node.mFlags.set_bit(CWayNode::WN_NOAUTOCONNECT);
 	}
 
 	// TO AVOID PROBLEMS WITH THE TRIANGULATION, WE MOVE THE POINTS AROUND JUST A BIT
@@ -2478,7 +2478,7 @@ NAV::TNodeHandle		NAV::GetNearestNode(const vec3_t& position, NAV::TNodeHandle p
 
 				// Bias Points That Are Not Connected To Anything
 				//------------------------------------------------
-				if (node.mFlags.get_bit(CWayNode::EWayNodeFlags::WN_ISLAND))
+				if (node.mFlags.get_bit(CWayNode::WN_ISLAND))
 				{
 					NodeSort.mDistance *= 3.0f;
 				}
@@ -2937,7 +2937,7 @@ bool	NAV::FindPath(gentity_t* actor, NAV::TNodeHandle target, float MaxDangerLev
 			PPoint.mSpeed				= AtSpeed;
 			PPoint.mSlowingRadius		= 0.0f;
 			PPoint.mReachedRadius		= Max(radius*3.0f, (mGraph.get_node(PPoint.mNode).mRadius * 0.40f));
-			if (mGraph.get_node(PPoint.mNode).mFlags.get_bit(CWayNode::EWayNodeFlags::WN_FLOATING))
+			if (mGraph.get_node(PPoint.mNode).mFlags.get_bit(CWayNode::WN_FLOATING))
 			{
 				PPoint.mReachedRadius	= 20.0f;
 			}
@@ -3009,7 +3009,7 @@ bool	NAV::FindPath(gentity_t* actor, NAV::TNodeHandle target, float MaxDangerLev
 		// Check To See If This Is The Apex Of A Sharp Turn
 		//--------------------------------------------------
 		if (i!=0 &&			//is there a next point?
-			!mGraph.get_node(PPoint.mNode).mFlags.get_bit(CWayNode::EWayNodeFlags::WN_FLOATING)
+			!mGraph.get_node(PPoint.mNode).mFlags.get_bit(CWayNode::WN_FLOATING)
 			)
 		{
 			NextToBeyond = (puser.mPath[i-1].mPoint - PPoint.mPoint);
@@ -3316,8 +3316,8 @@ bool			NAV::OnNeighboringPoints(TNodeHandle A, TNodeHandle B)
 	}
 	int edgeNum = mGraph.get_edge_across(A, B);
 	if (edgeNum && 
-		!mGraph.get_edge(edgeNum).mFlags.get_bit(CWayEdge::EWayEdgeFlags::WE_JUMPING) && 
-		!mGraph.get_edge(edgeNum).mFlags.get_bit(CWayEdge::EWayEdgeFlags::WE_FLYING) && 
+		!mGraph.get_edge(edgeNum).mFlags.get_bit(CWayEdge::WE_JUMPING) && 
+		!mGraph.get_edge(edgeNum).mFlags.get_bit(CWayEdge::WE_FLYING) && 
 		 mGraph.get_edge(edgeNum).mDistance<SAFE_NEIGHBORINGPOINT_DIST)
 	{
 		return true;
@@ -3402,15 +3402,15 @@ bool			NAV::InSafeRadius(CVec3 at, TNodeHandle atNode, TNodeHandle targetNode)
 
 			// Is The Edge Valid?
 			//--------------------
-			if (!atToTargetEdge.mFlags.get_bit(CWayEdge::EWayEdgeFlags::WE_FLYING) &&
-				!atToTargetEdge.mFlags.get_bit(CWayEdge::EWayEdgeFlags::WE_JUMPING) &&
+			if (!atToTargetEdge.mFlags.get_bit(CWayEdge::WE_FLYING) &&
+				!atToTargetEdge.mFlags.get_bit(CWayEdge::WE_JUMPING) &&
 				mUser.is_valid(atToTargetEdge, targetNode))
 			{
 				float	atDistToEdge = at.DistToLine(atToTargetEdge.PointA(), atToTargetEdge.PointB());
 
 				// Now Are We Close Enough To The Edge
 				//-------------------------------------
-				if (atToTargetEdge.mFlags.get_bit(CWayEdge::EWayEdgeFlags::WE_SIZE_LARGE))
+				if (atToTargetEdge.mFlags.get_bit(CWayEdge::WE_SIZE_LARGE))
 				{
 					return (atDistToEdge<SC_LARGE_RADIUS);
 				}
@@ -3491,11 +3491,11 @@ bool			NAV::NextPosition(gentity_t* actor, CVec3& Position, float& SlowingRadius
 
 	SlowingRadius	= next.mSlowingRadius;
 	Position		= next.mPoint;
-	Fly				= node.mFlags.get_bit(CWayNode::EWayNodeFlags::WN_FLOATING);
+	Fly				= node.mFlags.get_bit(CWayNode::WN_FLOATING);
 
 	if (edgeIndex)
 	{
-		Jump		= mGraph.get_edge(edgeIndex).mFlags.get_bit(CWayEdge::EWayEdgeFlags::WE_JUMPING);
+		Jump		= mGraph.get_edge(edgeIndex).mFlags.get_bit(CWayEdge::WE_JUMPING);
 	}
 
 	return true;
@@ -3793,9 +3793,9 @@ unsigned int		NAV::ClassifyEntSize(gentity_t* ent)
 
 		if ((radius > SC_MEDIUM_RADIUS) || height > (SC_MEDIUM_HEIGHT))
 		{
-			return CWayEdge::EWayEdgeFlags::WE_SIZE_LARGE;
+			return CWayEdge::WE_SIZE_LARGE;
 		}
-		return CWayEdge::EWayEdgeFlags::WE_SIZE_MEDIUM;
+		return CWayEdge::WE_SIZE_MEDIUM;
 	}
 	return 0;
 }
@@ -3826,7 +3826,7 @@ void			NAV::ShowDebugInfo(const vec3_t& PlayerPosition, int PlayerWaypoint)
 				{
 					if (NAVDEBUG_showPointLines)
 					{
-						if (at.mFlags.get_bit(CWayNode::EWayNodeFlags::WN_FLOATING))
+						if (at.mFlags.get_bit(CWayNode::WN_FLOATING))
 						{
 							CG_DrawEdge(at.mPoint.v, atEnd.v, EDGE_NODE_FLOATING );
 						}
@@ -3837,7 +3837,7 @@ void			NAV::ShowDebugInfo(const vec3_t& PlayerPosition, int PlayerWaypoint)
 					}
 					else
 					{
-						if (at.mFlags.get_bit(CWayNode::EWayNodeFlags::WN_FLOATING))
+						if (at.mFlags.get_bit(CWayNode::WN_FLOATING))
 						{
 							CG_DrawNode(at.mPoint.v, NODE_FLOATING );
 						}
@@ -3848,7 +3848,7 @@ void			NAV::ShowDebugInfo(const vec3_t& PlayerPosition, int PlayerWaypoint)
 					}
 					if (NAVDEBUG_showRadius && at.mPoint.Dist2(PlayerPosition)<(at.mRadius*at.mRadius))
 					{
-						if (at.mFlags.get_bit(CWayNode::EWayNodeFlags::WN_FLOATING))
+						if (at.mFlags.get_bit(CWayNode::WN_FLOATING))
 						{
 							CG_DrawRadius(at.mPoint.v, at.mRadius, NODE_FLOATING );
 						}
@@ -3901,15 +3901,15 @@ void			NAV::ShowDebugInfo(const vec3_t& PlayerPosition, int PlayerWaypoint)
 			{
 				if (mUser.is_valid(at))
 				{
-					if (at.mFlags.get_bit(CWayEdge::EWayEdgeFlags::WE_JUMPING))
+					if (at.mFlags.get_bit(CWayEdge::WE_JUMPING))
 					{
 						CG_DrawEdge(a.mPoint.v, b.mPoint.v, EDGE_JUMP);
 					}
-					else if (at.mFlags.get_bit(CWayEdge::EWayEdgeFlags::WE_FLYING))
+					else if (at.mFlags.get_bit(CWayEdge::WE_FLYING))
 					{
 						CG_DrawEdge(a.mPoint.v, b.mPoint.v, EDGE_FLY);
 					}
-					else if (at.Size()==CWayEdge::EWayEdgeFlags::WE_SIZE_LARGE)
+					else if (at.Size()==CWayEdge::WE_SIZE_LARGE)
 					{
 						CG_DrawEdge(a.mPoint.v, b.mPoint.v, EDGE_LARGE);
 					}
@@ -4115,9 +4115,11 @@ void			STEER::Activate(gentity_t* actor)
 		suser.mMaxSpeed	= actor->NPC->stats.walkSpeed;
 	}
 
+#ifdef _DEBUG
 	assert(suser.mPosition.IsFinite());
 	assert(suser.mOrientation.IsFinite());
 	assert(suser.mVelocity.IsFinite());
+#endif
 
 
 	// Find Our Neighbors
@@ -4186,10 +4188,12 @@ void			STEER::DeActivate(gentity_t* actor, usercmd_t* ucmd)
 	SSteerUser& suser = mSteerUsers[mSteerUserIndex[actor->s.number]];
 
 
+#ifdef _DEBUG
 	assert(suser.mPosition.IsFinite());
 	assert(suser.mOrientation.IsFinite());
 	assert(suser.mSteering.IsFinite());
 	assert(suser.mMass!=0.0f);
+#endif
 
 
 
@@ -4240,8 +4244,10 @@ void			STEER::DeActivate(gentity_t* actor, usercmd_t* ucmd)
 
 			Angles = NewAngles;//((Angles + NewAngles)*0.75f);
 		}
+#ifdef _DEBUG
 		assert(MoveDir.IsFinite());
 		assert(Angles.IsFinite());
+#endif
 
 
 
@@ -4646,13 +4652,15 @@ float			STEER::Stop(gentity_t* actor, float weight)
 	if (actor->NPC->aiFlags&NPCAI_FLY)
 	{
 		int nearestNode = NAV::GetNearestNode(actor);
-		if (nearestNode>0 && !mGraph.get_node(nearestNode).mFlags.get_bit(CWayNode::EWayNodeFlags::WN_FLOATING))
+		if (nearestNode>0 && !mGraph.get_node(nearestNode).mFlags.get_bit(CWayNode::WN_FLOATING))
 		{
 			actor->NPC->aiFlags &= ~NPCAI_FLY;
 		}
 	}
 
+#ifdef _DEBUG
 	assert(suser.mSteering.IsFinite());
+#endif
 
 	return 0.0f;
 }
@@ -4671,7 +4679,9 @@ float			STEER::MatchSpeed(gentity_t* actor, float speed, float weight)
 	suser.mDesiredSpeed		=  0.0f;
 	suser.mSteering			+= ((suser.mDesiredVelocity - suser.mVelocity) * weight);
 
+#ifdef _DEBUG
 	assert(suser.mSteering.IsFinite());
+#endif
 
 	return 0.0f;
 
@@ -4719,7 +4729,9 @@ float			STEER::Seek(gentity_t* actor, const CVec3& pos, float slowingDistance, f
 
 	suser.mSteering			+= ((suser.mDesiredVelocity - suser.mVelocity) * weight);
 
+#ifdef _DEBUG
 	assert(suser.mSteering.IsFinite());
+#endif
 
 	return suser.mDistance;
 }
@@ -4745,7 +4757,9 @@ float			STEER::Flee(gentity_t* actor,		const CVec3& pos, float weight)
 	suser.mSeekLocation		= pos + suser.mDesiredVelocity;
 
 
+#ifdef _DEBUG
 	assert(suser.mSteering.IsFinite());
+#endif
 
 	return suser.mDistance;
 }
@@ -4906,7 +4920,9 @@ float			STEER::Separation(gentity_t* actor, float Scale)
 		}
 	}
 
+#ifdef _DEBUG
 	assert(suser.mSteering.IsFinite());
+#endif
 
 	return 0.0f;
 }
@@ -5201,7 +5217,9 @@ bool		TestCollision(gentity_t* actor, SSteerUser& suser, const CVec3& ProjectVel
 						suser.mDesiredVelocity.Truncate(ContactSpeed);
 						suser.mSteering			+= ((suser.mDesiredVelocity - ProjectVelocity) * DirectionSimilarity);
 						suser.mIgnoreEntity		= ContactNum;	// So The Side Trace Does Not Care About This Guy
+#ifdef _DEBUG
 						assert(suser.mSteering.IsFinite());
+#endif
 						Safe = true;	// We'll Say It's Safe For Now
 					}
 				}
@@ -5228,7 +5246,9 @@ bool		TestCollision(gentity_t* actor, SSteerUser& suser, const CVec3& ProjectVel
 					//-----------------------------------
 					suser.mSteering			-= ProjectVelocity;
 					suser.mIgnoreEntity		= ContactNum;
+#ifdef _DEBUG
 					assert(suser.mSteering.IsFinite());
+#endif
 
 					Safe = true;	// We say it is "Safe" because We Don't Want To Try And Steer Around
 				}

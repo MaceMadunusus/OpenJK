@@ -1,3 +1,21 @@
+/*
+This file is part of Jedi Knight 2.
+
+    Jedi Knight 2 is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Knight 2 is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Knight 2.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 // g_utils.c -- misc utility functions for game module
 
 // leave this line at the top for all g_xxxx.cpp files...
@@ -11,7 +29,7 @@
 #include "g_icarus.h"
 #include "b_local.h"
 #include "anims.h"
-#include "..\renderer\mdx_format.h"
+#include "../../code/rd-common/mdx_format.h"
 
 #define ACT_ACTIVE		qtrue
 #define ACT_INACTIVE	qfalse
@@ -79,7 +97,7 @@ int G_ModelIndex( const char *name ) {
 
 int G_SoundIndex( const char *name ) {
 	char stripped[MAX_QPATH];
-	COM_StripExtension(name, stripped);
+	COM_StripExtension(name, stripped, sizeof(stripped));
 	
 	return G_FindConfigstringIndex (stripped, CS_SOUNDS, MAX_SOUNDS, qtrue);
 }
@@ -89,7 +107,7 @@ int G_EffectIndex( const char *name )
 	char temp[MAX_QPATH];
 
 	// We just don't want extensions on the things we are registering
-	COM_StripExtension( name, temp );
+	COM_StripExtension( name, temp, sizeof(temp) );
 
 	return G_FindConfigstringIndex( temp, CS_EFFECTS, MAX_FX, qtrue );
 }
@@ -209,7 +227,7 @@ void G_PlayEffect( const char *name,  const int modelIndex, const int boltIndex,
 //===Bypass network for sounds on specific channels====================
 
 extern void cgi_S_StartSound( vec3_t origin, int entityNum, int entchannel, sfxHandle_t sfx );
-#include "..\cgame\cg_media.h"	//access to cgs
+#include "../cgame/cg_media.h"	//access to cgs
 extern void CG_TryPlayCustomSound( vec3_t origin, int entityNum, soundChannel_t channel, const char *soundName, int customSoundSet );
 //NOTE: Do NOT Try to use this before the cgame DLL is valid, it will NOT work!
 void G_SoundOnEnt (gentity_t *ent, soundChannel_t channel, const char *soundPath)

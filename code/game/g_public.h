@@ -1,3 +1,21 @@
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 #ifndef __G_PUBLIC_H__
 #define __G_PUBLIC_H__
 // g_public.h -- game module information visible to server
@@ -156,10 +174,10 @@ typedef struct {
 
 	// Savegame handling
 	//
-	qboolean	(*AppendToSaveGame)(unsigned long chid, const void *data, int length);
+	qboolean	(*AppendToSaveGame)(unsigned int chid, const void *data, int length);
 
-	int			(*ReadFromSaveGame)(unsigned long chid, void *pvAddress, int iLength, void **ppvAddressPtr );
-	int			(*ReadFromSaveGameOptional)(unsigned long chid, void *pvAddress, int iLength, void **ppvAddressPtr );
+	int			(*ReadFromSaveGame)(unsigned int chid, void *pvAddress, int iLength, void **ppvAddressPtr );
+	int			(*ReadFromSaveGameOptional)(unsigned int chid, void *pvAddress, int iLength, void **ppvAddressPtr );
 
 	// add commands to the console as if they were typed in
 	// for map changing, etc
@@ -228,7 +246,7 @@ typedef struct {
 	// dynamic memory allocator for things that need to be freed
 	void		*(*Malloc)( int iSize, memtag_t eTag, qboolean bZeroIt);	// see qcommon/tags.h for choices
 	int			(*Free)( void *buf );
-	qboolean	(*bIsFromZone)( void *buf, memtag_t eTag);	// see qcommon/tags.h for choices
+	qboolean	(*bIsFromZone)( const void *buf, memtag_t eTag);	// see qcommon/tags.h for choices
 
 /*
 Ghoul2 Insert Start
@@ -397,9 +415,6 @@ typedef struct {
 	// The game can issue gi.argc() / gi.argv() commands to get the command
 	// and parameters.  Return qfalse if the game doesn't recognize it as a command.
 	qboolean	(*ConsoleCommand)( void );
-
-	//void		(*PrintEntClassname)( int clientNum );
-	//int			(*ValidateAnimRange)( int startFrame, int endFrame, float animSpeed );
 
 	void		(*GameSpawnRMGEntity)(char *s);
 	//

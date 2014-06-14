@@ -1,3 +1,21 @@
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Activision
+
 ////////////////////////////////////////////////////////////////////////////////////////
 // RAVEN STANDARD USEFUL FUNCTION LIBRARY
 //  (c) 2002 Activision
@@ -19,9 +37,10 @@
 ////////////////////////////////////////////////////////////////////////////////////////
 // Includes
 ////////////////////////////////////////////////////////////////////////////////////////
+#include "../qcommon/q_shared.h"
 #include "hstring.h"
 #include <string.h>
-#include "..\Ratl\hash_pool_vs.h"
+#include "../Ratl/hash_pool_vs.h"
 
 
 
@@ -50,12 +69,6 @@ TStrPool&	Pool()
 }
 
 
-
-
-#ifdef _XBOX
-namespace dllNamespace
-{
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////////////
 // Constructor
@@ -178,8 +191,4 @@ int			hstring::total_strings()	{return Pool().total_allocs();}
 int			hstring::total_bytes()		{return Pool().size();}
 int			hstring::total_finds()		{return Pool().total_finds();}
 int			hstring::total_collisions()	{return Pool().total_collisions();}
-#endif
-
-#ifdef _XBOX
-} // dllNamespace
 #endif

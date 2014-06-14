@@ -1,11 +1,29 @@
-// this include must remain at the top of every bg_xxxx CPP file
-#include "common_headers.h"
+/*
+This file is part of Jedi Knight 2.
+
+    Jedi Knight 2 is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Knight 2 is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Knight 2.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
 
 // define GAME_INCLUDE so that g_public.h does not define the
 // short, server-visible gclient_t and gentity_t structures,
 // because we define the full size ones in this file
 #define GAME_INCLUDE
-#include "q_shared.h"
+#include "../../code/qcommon/q_shared.h"
+#include "../cgame/cg_local.h"
+#include "b_local.h"
+#include "g_local.h"
 #include "g_shared.h"
 #include "bg_local.h"
 #include "anims.h"

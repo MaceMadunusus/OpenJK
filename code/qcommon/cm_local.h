@@ -1,32 +1,39 @@
-#include "../game/q_shared.h"
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
+#include "q_shared.h"
 #include "qcommon.h"
 #include "cm_polylib.h"
-#include "cm_landscape.h"
-
-#ifdef _XBOX
-#include "sparc.h"
-#endif
 
 #ifndef CM_LOCAL_H
 #define CM_LOCAL_H
 
 #define	BOX_MODEL_HANDLE	(MAX_SUBMODELS-1)
 
-#ifdef _XBOX
-#pragma pack(push, 1)
-typedef struct {
-	short		children[2];		// negative numbers are leafs
-} cNode_t;
-#pragma pack(pop)
-
-#else // _XBOX
+struct Point
+{
+	long x, y;
+};
 
 typedef struct {
 	cplane_t	*plane;
 	int			children[2];		// negative numbers are leafs
 } cNode_t;
-
-#endif // _XBOX
 
 typedef struct {
 	int			cluster;
@@ -44,22 +51,10 @@ typedef struct cmodel_s {
 	cLeaf_t		leaf;			// submodels don't reference the main tree
 } cmodel_t;
 
-#ifdef _XBOX
-#pragma pack (push, 1)
-typedef struct cbrushside_s {
-	NotSoShort planeNum;
-	unsigned char	shaderNum;
-} cbrushside_t;
-#pragma pack(pop)
-
-#else // _XBOX
-
 typedef struct cbrushside_s {
 	cplane_t	*plane;
 	int			shaderNum;
 } cbrushside_t;
-
-#endif // _XBOX
 
 typedef struct cbrush_s {
 	int					shaderNum;		// the shader that determined the contents
@@ -96,62 +91,6 @@ typedef struct {
 	int			floodnum;
 	int			floodvalid;
 } cArea_t;
-
-#ifdef _XBOX
-template <class T>
-class SPARC;
-typedef struct {
-	char		name[MAX_QPATH];
-
-	int			numShaders;
-	CCMShader	*shaders;
-
-	int			numBrushSides;
-	cbrushside_t *brushsides;
-
-	int			numPlanes;
-	cplane_t	*planes;
-
-	int			numNodes;
-	cNode_t		*nodes;
-
-	int			numLeafs;
-	cLeaf_t		*leafs;
-
-	int			numLeafBrushes;
-	int			*leafbrushes;
-
-	int			numLeafSurfaces;
-	int			*leafsurfaces;
-
-	int			numSubModels;
-	cmodel_t	*cmodels;
-
-	int			numBrushes;
-	cbrush_t	*brushes;
-
-	int			numClusters;
-	int			clusterBytes;
-	SPARC<byte>	*visibility;
-	qboolean	vised;			// if false, visibility is just a single cluster of ffs
-
-	int			numEntityChars;
-	char		*entityString;
-
-	int			numAreas;
-	cArea_t		*areas;
-	int			*areaPortals;	// [ numAreas*numAreas ] reference counts
-
-	int			numSurfaces;
-	cPatch_t	**surfaces;			// non-patches will be NULL
-
-	int			floodvalid;
-	int			checkcount;					// incremented on each trace
-
-//	CCMLandScape	*landScape;		// Removing terrain from Xbox
-} clipMap_t;
-
-#else // _XBOX
 
 typedef struct {
 	char		name[MAX_QPATH];
@@ -201,12 +140,7 @@ typedef struct {
 
 	int			floodvalid;
 	int			checkcount;					// incremented on each trace
-
-	CCMLandScape	*landScape;
 } clipMap_t;
-
-#endif // _XBOX
-
 
 // keep 1/8 unit away to keep the position valid before network snapping
 // and to avoid various numeric issues
@@ -273,8 +207,6 @@ typedef struct leafList_s {
 } leafList_t;
 
 
-int CM_BoxBrushes( const vec3_t mins, const vec3_t maxs, cbrush_t **boxlist, int listsize );
-
 void CM_StoreLeafs( leafList_t *ll, int nodenum );
 void CM_StoreBrushes( leafList_t *ll, int nodenum );
 
@@ -293,29 +225,8 @@ void CM_TraceThroughPatchCollide( traceWork_t *tw, const struct patchCollide_s *
 qboolean CM_PositionTestInPatchCollide( traceWork_t *tw, const struct patchCollide_s *pc );
 void CM_ClearLevelPatches( void );
 
-// cm_shader.cpp
-void CM_SetupShaderProperties( void );
-void CM_ShutdownShaderProperties(void);
-CCMShader *CM_GetShaderInfo( const char *name );
-CCMShader *CM_GetShaderInfo( int shaderNum );
-void		CM_GetModelFormalName ( const char* model, const char* skin, char* name, int size );
-
 //cm_trace.cpp
 void CM_CalcExtents(const vec3_t start, const vec3_t end, const traceWork_t *tw, vec3pair_t bounds);
-void CM_HandlePatchCollision(struct traceWork_s *tw, trace_t &trace, const vec3_t tStart, const vec3_t tEnd, CCMPatch *patch, int checkcount);
 bool CM_GenericBoxCollide(const vec3pair_t abounds, const vec3pair_t bbounds);
-
-
-//RM_Terrain.cpp
-int Round(float value);
-
-//random utils for cm_terrain (and others?)
-#define VectorInc(v)					((v)[0] += 1.0f,(v)[1] += 1.0f,(v)[2] +=1.0f)
-#define VectorDec(v)					((v)[0] -= 1.0f,(v)[1] -= 1.0f,(v)[2] -=1.0f)
-#define VectorInverseScaleVector(a,b,c)	((c)[0]=(a)[0]/(b)[0],(c)[1]=(a)[1]/(b)[1],(c)[2]=(a)[2]/(b)[2])
-#define VectorScaleVectorAdd(c,a,b,o)	((o)[0]=(c)[0]+((a)[0]*(b)[0]),(o)[1]=(c)[1]+((a)[1]*(b)[1]),(o)[2]=(c)[2]+((a)[2]*(b)[2]))
-
-#define minimum(x,y) ((x)<(y)?(x):(y))
-#define maximum(x,y) ((x)>(y)?(x):(y))
 
 #endif

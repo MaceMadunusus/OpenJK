@@ -1,5 +1,20 @@
-// this include must remain at the top of every bg_xxxx CPP file
-#include "common_headers.h"
+/*
+This file is part of Jedi Knight 2.
+
+    Jedi Knight 2 is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Knight 2 is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Knight 2.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
 
 // bg_pmove.c -- both games player movement code
 // takes a playerstate and a usercmd as input and returns a modifed playerstate
@@ -8,7 +23,8 @@
 // short, server-visible gclient_t and gentity_t structures,
 // because we define the full size ones in this file
 #define	GAME_INCLUDE
-#include "q_shared.h"
+#include "../../code/qcommon/q_shared.h"
+#include "b_local.h"
 #include "g_shared.h"
 #include "bg_local.h"			   
 #include "g_local.h"			   
@@ -117,7 +133,7 @@ extern int PM_PickAnim( gentity_t *self, int minAnim, int maxAnim );
 extern void DoImpact( gentity_t *self, gentity_t *other, qboolean damageSelf );
 
 #define	PHASER_RECHARGE_TIME	100
-extern int transitionMove[Q_NUM_QUADS][Q_NUM_QUADS];
+extern saberMoveName_t transitionMove[Q_NUM_QUADS][Q_NUM_QUADS];
 
 extern qboolean G_ControlledByPlayer( gentity_t *self );
 qboolean PM_ControlledByPlayer( void )
@@ -4310,8 +4326,8 @@ void PM_FootSlopeTrace( float *pDiff, float *pInterval )
 #if 1
 	for ( int i = 0; i < 3; i++ )
 	{
-		if ( _isnan( pm->gent->client->renderInfo.footLPoint[i] )
-			|| _isnan( pm->gent->client->renderInfo.footRPoint[i] ) )
+		if ( Q_isnan( pm->gent->client->renderInfo.footLPoint[i] )
+			|| Q_isnan( pm->gent->client->renderInfo.footRPoint[i] ) )
 		{
 			if ( pDiff != NULL )
 			{
@@ -8025,8 +8041,9 @@ static void PM_Weapon( void )
 
 	// check for weapon change
 	// can't change if weapon is firing, but can change again if lowering or raising
-	if ( pm->ps->weaponTime <= 0 || pm->ps->weaponstate != WEAPON_FIRING ) {
-		if ( pm->ps->weapon != pm->cmd.weapon ) {
+	if ( (pm->ps->weaponTime <= 0 || pm->ps->weaponstate != WEAPON_FIRING) && pm->ps->weaponstate != WEAPON_CHARGING_ALT && pm->ps->weaponstate != WEAPON_CHARGING) {
+		// eez- don't switch weapons if we're charging our current one up
+		if ( pm->ps->weapon != pm->cmd.weapon && (!pm->ps->viewEntity || pm->ps->viewEntity >= ENTITYNUM_WORLD) && !PM_DoChargedWeapons()) {
 			PM_BeginWeaponChange( pm->cmd.weapon );
 		}
 	}
@@ -8043,6 +8060,11 @@ static void PM_Weapon( void )
 	}
 
 	if ( pm->ps->weapon == WP_NONE )
+	{
+		return;
+	}
+
+	if ( PM_DoChargedWeapons() )
 	{
 		return;
 	}
@@ -8069,12 +8091,6 @@ static void PM_Weapon( void )
 				break;
 			}
 		}
-		return;
-	}
-
-	if ( PM_DoChargedWeapons())
-	{
-		// In some cases the charged weapon code may want us to short circuit the rest of the firing code
 		return;
 	}
 
@@ -8307,7 +8323,9 @@ static void PM_Weapon( void )
 
 	if(pm->gent && pm->gent->NPC != NULL )
 	{//NPCs have their own refire logic
-		return;
+		// eez: Unless they're controlled by the player!
+		if(!PM_ControlledByPlayer())
+			return;
 	}
 
 	if ( g_timescale != NULL )

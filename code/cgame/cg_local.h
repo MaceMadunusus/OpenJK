@@ -1,7 +1,25 @@
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 #ifndef	__CG_LOCAL_H__
 #define	__CG_LOCAL_H__
 
-#include "../game/q_shared.h"
+#include "../qcommon/q_shared.h"
 
 // define GAME_INCLUDE so that g_public.h does not define the
 // short, server-visible gclient_t and gentity_t structures,
@@ -131,13 +149,8 @@ struct centity_s
 {
 	entityState_t	currentState;	// from cg.frame
 	const entityState_t	*nextState;		// from cg.nextFrame, if available
-#ifdef _XBOX
-	byte		interpolate;	// true if next is valid to interpolate to
-	byte		currentValid;	// true if cg.frame holds this entity
-#else
 	qboolean		interpolate;	// true if next is valid to interpolate to
 	qboolean		currentValid;	// true if cg.frame holds this entity
-#endif
 
 	int				muzzleFlashTime;	// move to playerEntity?
 	qboolean		altFire;			// move to playerEntity?
@@ -351,10 +364,6 @@ typedef struct {
 	refdef_t	refdef;
 	vec3_t		refdefViewAngles;		// will be converted to refdef.viewaxis
 
-#ifdef _XBOX
-	qboolean	widescreen;
-#endif
-
 	// zoom key
 	int			zoomMode;		// 0 - not zoomed, 1 - binoculars, 2 - disruptor weapon
 	int			zoomDir;		// -1, 1
@@ -505,7 +514,7 @@ Ghoul2 Insert End
 
 #define MAX_SHOWPOWERS 12
 extern int showPowers[MAX_SHOWPOWERS]; 
-extern char *showPowersName[MAX_SHOWPOWERS];
+extern const char *showPowersName[MAX_SHOWPOWERS];
 extern int force_icons[NUM_FORCE_POWERS];
 #define MAX_DPSHOWPOWERS 16
 
@@ -564,6 +573,7 @@ extern	vmCvar_t		cg_drawFPS;
 extern	vmCvar_t		cg_drawSnapshot;
 extern	vmCvar_t		cg_drawAmmoWarning;
 extern	vmCvar_t		cg_drawCrosshair;
+extern	vmCvar_t		cg_dynamicCrosshair;
 extern	vmCvar_t		cg_crosshairForceHint;
 extern	vmCvar_t		cg_crosshairIdentifyTarget;
 extern	vmCvar_t		cg_crosshairX;
@@ -577,6 +587,9 @@ extern	vmCvar_t		cg_debugAnim;
 extern	vmCvar_t		cg_debugAnimTarget;
 extern	vmCvar_t		cg_gun_frame;
 #endif
+extern	vmCvar_t		cg_gun_x;
+extern	vmCvar_t		cg_gun_y;
+extern	vmCvar_t		cg_gun_z;
 extern	vmCvar_t		cg_debugSaber;
 extern	vmCvar_t		cg_debugEvents;
 extern	vmCvar_t		cg_errorDecay;
@@ -586,6 +599,7 @@ extern	vmCvar_t		cg_drawGun;
 extern	vmCvar_t		cg_autoswitch;
 extern	vmCvar_t		cg_simpleItems;
 extern	vmCvar_t		cg_fov;
+extern	vmCvar_t		cg_fovAspectAdjust;
 extern	vmCvar_t		cg_endcredits;
 extern	vmCvar_t		cg_updatedDataPadForcePower1;
 extern	vmCvar_t		cg_updatedDataPadForcePower2;
@@ -630,6 +644,11 @@ extern	vmCvar_t		cg_reliableAnimSounds;
 extern	vmCvar_t		cg_smoothPlayerPos;
 extern	vmCvar_t		cg_smoothPlayerPlat;
 extern	vmCvar_t		cg_smoothPlayerPlatAccel;
+
+extern	vmCvar_t		cg_smoothCamera;
+extern	vmCvar_t		cg_speedTrail;
+extern	vmCvar_t		cg_fovViewmodel;
+extern	vmCvar_t		cg_fovViewmodelAdjust;
 
 void CG_NewClientinfo( int clientNum );
 //
@@ -726,7 +745,7 @@ void CG_TileClear( void );
 void CG_CenterPrint( const char *str, int y );
 void CG_DrawActive( stereoFrame_t stereoView );
 void CG_ScrollText( const char *str, int iPixelWidth );
-void CG_CaptionText( const char *str, int sound, int y );
+void CG_CaptionText( const char *str, int sound );
 void CG_CaptionTextStop( void );
 
 //
@@ -769,7 +788,6 @@ void CG_EntityEvent( centity_t *cent, vec3_t position );
 vec3_t *CG_SetEntitySoundPosition( centity_t *cent );
 void CG_AddPacketEntities( qboolean isPortal );
 void CG_Beam( centity_t *cent, int color );
-void CG_Cylinder( vec3_t start, vec3_t end, float radius, vec3_t color );
 void CG_AdjustPositionForMover( const vec3_t in, int moverNum, int atTime, vec3_t out );
 
 void CG_PositionEntityOnTag( refEntity_t *entity, const refEntity_t *parent, 
@@ -805,7 +823,6 @@ void CG_RegisterItemVisuals( int itemNum );
 void CG_RegisterItemSounds( int itemNum );
 
 void CG_FireWeapon( centity_t *cent, qboolean alt_fire );
-//void CG_ChargeWeapon( centity_t *cent );
 
 void CG_AddViewWeapon (playerState_t *ps);
 void CG_DrawWeaponSelect( void );
@@ -1019,7 +1036,6 @@ void	cgi_R_RenderScene( const refdef_t *fd );
 void	cgi_R_SetColor( const float *rgba );	// NULL = 1,1,1,1
 void	cgi_R_DrawStretchPic( float x, float y, float w, float h, 
 	float s1, float t1, float s2, float t2, qhandle_t hShader );
-//void	cgi_R_DrawScreenShot( float x, float y, float w, float h);
 
 void	cgi_R_ModelBounds( qhandle_t model, vec3_t mins, vec3_t maxs );
 void	cgi_R_LerpTag( orientation_t *tag, qhandle_t mod, int startFrame, int endFrame, 
@@ -1202,5 +1218,9 @@ void CG_PlayEffectOnEnt( const char *fxName, const int clientNum, vec3_t origin,
 void CG_PlayEffectIDOnEnt( const int fxID, const int clientNum, vec3_t origin, const vec3_t fwd );
 void CG_PlayEffect( const char *fxName, vec3_t origin, const vec3_t fwd );
 void CG_PlayEffectID( const int fxID, vec3_t origin, const vec3_t fwd );
+
+void	CG_ClearLightStyles( void );
+void	CG_RunLightStyles( void );
+void	CG_SetLightstyle( int i );
 
 #endif	//__CG_LOCAL_H__

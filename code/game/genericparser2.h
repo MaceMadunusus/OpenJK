@@ -1,3 +1,21 @@
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 // Filename:-	genericparser2.h
 
 
@@ -8,14 +26,14 @@
 // conditional expression is constant
 // conversion from int to char, possible loss of data
 // unreferenced inline funciton has been removed
+#ifdef _MSC_VER
 #pragma warning( disable : 4127 4244 4514 )
 
 
 #ifdef DEBUG_LINKING
 	#pragma message("...including GenericParser2.h")
 #endif
-
-//#include "disablewarnings.h"
+#endif
 
 #ifdef _JK2EXE
 #define trap_Z_Malloc(x, y)		Z_Malloc(x,y,qtrue)
@@ -45,7 +63,7 @@ public:
 	char		*GetPool(void) { return mPool; }
 	int			GetUsed(void) { return mUsed; }
 
-	char		*AllocText(char *text, bool addNULL = true, CTextPool **poolPtr = 0);
+	char		*AllocText(const char *text, bool addNULL = true, CTextPool **poolPtr = 0);
 };
 
 void CleanTextPool(CTextPool *pool);

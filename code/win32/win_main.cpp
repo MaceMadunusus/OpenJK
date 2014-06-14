@@ -1,3 +1,21 @@
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 // win_main.h
 
 // leave this as first line for PCH reasons...
@@ -31,14 +49,10 @@
 #define  CLEAR_CRT_DEBUG_FIELD(a) ((void) 0)
 #endif
 
-#define	CD_BASEDIR	"gamedata\\gamedata"
-#define	CD_EXE		"jasp.exe"
-#define	CD_VOLUME	"JEDIACAD"
-
 #define MEM_THRESHOLD 128*1024*1024
 
-static char		sys_cmdline[MAX_STRING_CHARS];
-
+void Sys_SetBinaryPath(const char *path);
+char *Sys_BinaryPath(void);
 
 /*
 ==================
@@ -139,30 +153,22 @@ Sys_LowPhysicalMemory
 */
 qboolean Sys_LowPhysicalMemory() 
 {
-	static MEMORYSTATUS stat;
+	static MEMORYSTATUSEX stat;
 	static qboolean bAsked = qfalse;
 	static cvar_t* sys_lowmem = Cvar_Get( "sys_lowmem", "0", 0 );
 
 	if (!bAsked)	// just in case it takes a little time for GlobalMemoryStatus() to gather stats on
 	{				//	stuff we don't care about such as virtual mem etc.
 		bAsked = qtrue;
-		GlobalMemoryStatus (&stat);
+
+		stat.dwLength = sizeof (stat);
+		GlobalMemoryStatusEx (&stat);
 	}
 	if (sys_lowmem->integer)
 	{
 		return qtrue;
 	}
-	return (stat.dwTotalPhys <= MEM_THRESHOLD) ? qtrue : qfalse;
-}
-
-
-/*
-==================
-Sys_BeginProfiling
-==================
-*/
-void Sys_BeginProfiling( void ) {
-	// this is just used on the mac build
+	return (stat.ullTotalPhys <= MEM_THRESHOLD) ? qtrue : qfalse;
 }
 
 /*
@@ -178,7 +184,7 @@ void QDECL Sys_Error( const char *error, ... ) {
     MSG        msg;
 
 	va_start (argptr, error);
-	vsprintf (text, error, argptr);
+	Q_vsnprintf (text, sizeof(text), error, argptr);
 	va_end (argptr);
 
 	Conbuf_AppendText( text );
@@ -236,8 +242,13 @@ void Sys_Print( const char *msg ) {
 Sys_Mkdir
 ==============
 */
-void Sys_Mkdir( const char *path ) {
-	_mkdir (path);
+qboolean Sys_Mkdir( const char *path ) {
+	if( !CreateDirectory( path, NULL ) )
+	{
+		if( GetLastError( ) != ERROR_ALREADY_EXISTS )
+			return qfalse;
+	}
+	return qtrue;
 }
 
 /*
@@ -255,24 +266,6 @@ char *Sys_Cwd( void ) {
 }
 
 /*
-==============
-Sys_DefaultCDPath
-==============
-*/
-char *Sys_DefaultCDPath( void ) {
-	return "";
-}
-
-/*
-==============
-Sys_DefaultBasePath
-==============
-*/
-char *Sys_DefaultBasePath( void ) {
-	return Sys_Cwd();
-}
-
-/*
 ==============================================================
 
 DIRECTORY SCANNING
@@ -282,15 +275,103 @@ DIRECTORY SCANNING
 
 #define	MAX_FOUND_FILES	0x1000
 
-char **Sys_ListFiles( const char *directory, const char *extension, int *numfiles, qboolean wantsubs ) {
+void Sys_ListFilteredFiles( const char *basedir, char *subdirs, char *filter, char **psList, int *numfiles ) {
+	char		search[MAX_OSPATH], newsubdirs[MAX_OSPATH];
+	char		filename[MAX_OSPATH];
+	intptr_t	findhandle;
+	struct _finddata_t findinfo;
+
+	if ( *numfiles >= MAX_FOUND_FILES - 1 ) {
+		return;
+	}
+
+	if (strlen(subdirs)) {
+		Com_sprintf( search, sizeof(search), "%s\\%s\\*", basedir, subdirs );
+	}
+	else {
+		Com_sprintf( search, sizeof(search), "%s\\*", basedir );
+	}
+
+	findhandle = _findfirst (search, &findinfo);
+	if (findhandle == -1) {
+		return;
+	}
+
+	do {
+		if (findinfo.attrib & _A_SUBDIR) {
+			if (Q_stricmp(findinfo.name, ".") && Q_stricmp(findinfo.name, "..")) {
+				if (strlen(subdirs)) {
+					Com_sprintf( newsubdirs, sizeof(newsubdirs), "%s\\%s", subdirs, findinfo.name);
+				}
+				else {
+					Com_sprintf( newsubdirs, sizeof(newsubdirs), "%s", findinfo.name);
+				}
+				Sys_ListFilteredFiles( basedir, newsubdirs, filter, psList, numfiles );
+			}
+		}
+		if ( *numfiles >= MAX_FOUND_FILES - 1 ) {
+			break;
+		}
+		Com_sprintf( filename, sizeof(filename), "%s\\%s", subdirs, findinfo.name );
+		if (!Com_FilterPath( filter, filename, qfalse ))
+			continue;
+		psList[ *numfiles ] = CopyString( filename );
+		(*numfiles)++;
+	} while ( _findnext (findhandle, &findinfo) != -1 );
+
+	_findclose (findhandle);
+}
+
+static qboolean strgtr(const char *s0, const char *s1) {
+	int l0, l1, i;
+
+	l0 = strlen(s0);
+	l1 = strlen(s1);
+
+	if (l1<l0) {
+		l0 = l1;
+	}
+
+	for(i=0;i<l0;i++) {
+		if (s1[i] > s0[i]) {
+			return qtrue;
+		}
+		if (s1[i] < s0[i]) {
+			return qfalse;
+		}
+	}
+	return qfalse;
+}
+
+char **Sys_ListFiles( const char *directory, const char *extension, char *filter, int *numfiles, qboolean wantsubs ) {
 	char		search[MAX_OSPATH];
 	int			nfiles;
 	char		**listCopy;
 	char		*list[MAX_FOUND_FILES];
 	struct _finddata_t findinfo;
-	int			findhandle;
+	intptr_t	findhandle;
 	int			flag;
 	int			i;
+
+	if (filter) {
+
+		nfiles = 0;
+		Sys_ListFilteredFiles( directory, "", filter, list, &nfiles );
+
+		list[ nfiles ] = 0;
+		*numfiles = nfiles;
+
+		if (!nfiles)
+			return NULL;
+
+		listCopy = (char **)Z_Malloc( ( nfiles + 1 ) * sizeof( *listCopy ), TAG_LISTFILES, qfalse );
+		for ( i = 0 ; i < nfiles ; i++ ) {
+			listCopy[i] = list[i];
+		}
+		listCopy[i] = NULL;
+
+		return listCopy;
+	}
 
 	if ( !extension) {
 		extension = "";
@@ -342,6 +423,18 @@ char **Sys_ListFiles( const char *directory, const char *extension, int *numfile
 	}
 	listCopy[i] = NULL;
 
+	do {
+		flag = 0;
+		for(i=1; i<nfiles; i++) {
+			if (strgtr(listCopy[i-1], listCopy[i])) {
+				char *temp = listCopy[i];
+				listCopy[i] = listCopy[i-1];
+				listCopy[i-1] = temp;
+				flag = 1;
+			}
+		}
+	} while(flag);
+
 	return listCopy;
 }
 
@@ -361,66 +454,6 @@ void	Sys_FreeFileList( char **filelist ) {
 
 //========================================================
 
-
-/*
-================
-Sys_ScanForCD
-
-Search all the drives to see if there is a valid CD to grab
-the cddir from
-================
-*/
-#ifdef FINAL_BUILD
-static qboolean Sys_ScanForCD( void ) {
-	char		drive[4];
-	FILE		*f;
-	char		test[MAX_OSPATH];
-
-	drive[0] = 'c';
-	drive[1] = ':';
-	drive[2] = '\\';
-	drive[3] = 0;
-
-	// scan the drives
-	for ( drive[0] = 'c' ; drive[0] <= 'z' ; drive[0]++ ) {
-		if ( GetDriveType (drive) == DRIVE_CDROM ) {			
-			BOOL Result;
-			char VolumeName[MAX_PATH],FileSystemName[MAX_PATH];
-			DWORD VolumeSerialNumber,MaximumComponentLength,FileSystemFlags;
-			
-			Result = GetVolumeInformation(drive,VolumeName,sizeof(VolumeName),&VolumeSerialNumber,
-				&MaximumComponentLength,&FileSystemFlags,FileSystemName,sizeof(FileSystemName));
-
-			if (Result && (strnicmp(VolumeName,CD_VOLUME,8) == 0 ) )
-			{
-				sprintf (test, "%s%s\\%s", drive, CD_BASEDIR, CD_EXE);
-				f = fopen( test, "r");
-				if ( f ) {
-					fclose (f);
-					return Result;
-				}
-			}
-		}
-	}
-
-	return qfalse;
-}
-#endif
-/*
-================
-Sys_CheckCD
-
-Return true if the proper CD is in the drive
-================
-*/
-qboolean	Sys_CheckCD( void ) {
-#ifdef FINAL_BUILD
-	return Sys_ScanForCD();
-#else
-	return qtrue;
-#endif
-}
-
 /*
 ================
 Sys_GetClipboardData
@@ -437,7 +470,7 @@ char *Sys_GetClipboardData( void ) {
 		if ( ( hClipboardData = GetClipboardData( CF_TEXT ) ) != 0 ) {
 			if ( ( cliptext = (char *) GlobalLock( hClipboardData ) ) != 0 ) {
 				data = (char *) Z_Malloc( GlobalSize( hClipboardData ) + 1, TAG_CLIPBOARD, qfalse);
-				strcpy( data, cliptext );
+				Q_strncpyz( data, cliptext, GlobalSize( hClipboardData )+1 );
 				GlobalUnlock( hClipboardData );
 				
 				strtok( data, "\n\r\b" );
@@ -446,6 +479,83 @@ char *Sys_GetClipboardData( void ) {
 		CloseClipboard();
 	}
 	return data;
+}
+
+/*
+========================================================================
+
+LOAD/UNLOAD DLL
+
+========================================================================
+*/
+
+/*
+=================
+Sys_UnloadDll
+
+=================
+*/
+void Sys_UnloadDll( void *dllHandle ) {
+	if ( !dllHandle ) {
+		return;
+	}
+	if ( !FreeLibrary( (struct HINSTANCE__ *)dllHandle ) ) {
+		Com_Error (ERR_FATAL, "Sys_UnloadDll FreeLibrary failed");
+	}
+}
+
+
+/*
+=================
+Sys_LoadDll
+
+First try to load library name from system library path,
+from executable path, then fs_basepath.
+=================
+*/
+
+void *Sys_LoadDll(const char *name, qboolean useSystemLib)
+{
+	void *dllhandle = NULL;
+
+	if(useSystemLib)
+		Com_Printf("Trying to load \"%s\"...\n", name);
+	
+	if(!useSystemLib || !(dllhandle = Sys_LoadLibrary(name)))
+	{
+		const char *topDir;
+		char libPath[MAX_OSPATH];
+        
+		topDir = Sys_BinaryPath();
+        
+		if(!*topDir)
+			topDir = ".";
+        
+		Com_Printf("Trying to load \"%s\" from \"%s\"...\n", name, topDir);
+		Com_sprintf(libPath, sizeof(libPath), "%s%c%s", topDir, PATH_SEP, name);
+        
+		if(!(dllhandle = Sys_LoadLibrary(libPath)))
+		{
+			const char *basePath = Cvar_VariableString("fs_basepath");
+			
+			if(!basePath || !*basePath)
+				basePath = ".";
+			
+			if(FS_FilenameCompare(topDir, basePath))
+			{
+				Com_Printf("Trying to load \"%s\" from \"%s\"...\n", name, basePath);
+				Com_sprintf(libPath, sizeof(libPath), "%s%c%s", basePath, PATH_SEP, name);
+				dllhandle = Sys_LoadLibrary(libPath);
+			}
+			
+			if(!dllhandle)
+			{
+				Com_Printf("Loading \"%s\" failed\n", name);
+			}
+		}
+	}
+	
+	return dllhandle;
 }
 
 
@@ -482,34 +592,92 @@ Retrieve the DLL using fs_game
 =================
 */
 
-static HINSTANCE Sys_RetrieveDLL( const char *gamename, const char *debugdir )
+static HINSTANCE Sys_RetrieveDLL( const char *gamename )
 {
-	char	cwd[MAX_OSPATH];
-	char	name[MAX_OSPATH];
+	char *basepath = Cvar_VariableString( "fs_basepath" );
+	char *homepath = Cvar_VariableString( "fs_homepath" );
+	char *cdpath = Cvar_VariableString( "fs_cdpath" );
+	char *gamedir = Cvar_VariableString( "fs_game" );
 
-	HINSTANCE retVal;
-
-	cvar_t *moddir = Cvar_Get("fs_game", "", CVAR_INIT|CVAR_SERVERINFO);
-
-	// First search path: mod dir, debug/release folders
-	_getcwd(cwd, sizeof(cwd));
-	Com_sprintf(name, sizeof(name), "%s/%s/%s/%s", cwd, moddir->string, debugdir, gamename);
-	retVal = LoadLibrary(name);
+	// Try basepath/fs_game
+	char *fn = FS_BuildOSPath( basepath, gamedir, gamename );
+	HINSTANCE retVal = LoadLibrary( fn );
 	if(retVal)
 		goto successful;
 
-	// Second search path: mod dir
-	Com_sprintf(name, sizeof(name), "%s/%s/%s", cwd, moddir->string, gamename);
-	retVal = LoadLibrary(name);
+	if( homepath[0] ) {
+		// Try homepath/fs_game
+		fn = FS_BuildOSPath( homepath, gamedir, gamename );
+		retVal = LoadLibrary( fn );
+		if(retVal)
+			goto successful;
+	}
+
+	if( cdpath[0] ) {
+		// Try cdpath/fs_game
+		fn = FS_BuildOSPath( cdpath, gamedir, gamename );
+		retVal = LoadLibrary( fn );
+		if(retVal)
+			goto successful;
+	}
+
+	// Try base folder if mod is loaded but not found
+	if (gamedir[0] ) {
+		// Try basepath/base
+		fn = FS_BuildOSPath( basepath, OPENJKGAME, gamename );
+		retVal = LoadLibrary( fn );
+		if(retVal)
+			goto successful;
+
+		if( homepath[0] ) {
+			// Try homepath/base
+			fn = FS_BuildOSPath( homepath, OPENJKGAME, gamename );
+			retVal = LoadLibrary( fn );
+			if(retVal)
+				goto successful;
+		}
+
+		if( cdpath[0] ) {
+			// Try cdpath/fs_game
+			fn = FS_BuildOSPath( cdpath, OPENJKGAME, gamename );
+			retVal = LoadLibrary( fn );
+			if(retVal)
+				goto successful;
+		}
+	}
+
+	// Try basepath
+	fn = va( "%s/%s", basepath, gamename );
+	retVal = LoadLibrary( fn );
 	if(retVal)
 		goto successful;
 
-	// Third/last search path: gamedata folder
-	Com_sprintf(name, sizeof(name), "%s/%s", cwd, gamename);
-	retVal = LoadLibrary(name);
+	if( homepath[0] ) {
+		// Try homepath
+		fn = va( "%s/%s", homepath, gamename );
+		retVal = LoadLibrary( fn );
+		if(retVal)
+			goto successful;
+	}
+
+	if( cdpath[0] ) {
+		// Try cdpath/fs_game
+		fn = va( "%s/%s", cdpath, gamename );
+		retVal = LoadLibrary( fn );
+		if(retVal)
+			goto successful;
+	}
+
+#ifdef _DEBUG
+	// Try exepath (cwd)
+	fn = NULL;
+	retVal = LoadLibrary( gamename );
+	if(retVal)
+		goto successful;
+#endif
 
 successful:
-	Com_DPrintf("LoadLibrary (%s)\n", name);
+	Com_DPrintf("LoadLibrary (%s)\n", fn?fn:gamename);
 	return retVal;
 }
 
@@ -523,40 +691,18 @@ Loads the game dll
 void *Sys_GetGameAPI (void *parms)
 {
 	void	*(*GetGameAPI) (void *);
-#if defined _M_IX86
+
 	const char *gamename;
-	if(Cvar_VariableIntegerValue("com_jk2"))
-	{
-		gamename = "jk2gamex86.dll";
-	}
-	else
-	{
-		gamename = "jagamex86.dll";
-	}
-
-#ifdef NDEBUG
-	const char *debugdir = "release";
-#elif MEM_DEBUG
-	const char *debugdir = "shdebug";
+#ifdef JK2_MODE
+	gamename = "jospgame" ARCH_STRING DLL_EXT;
 #else
-	const char *debugdir = "debug";
-#endif	//NDEBUG
-
-#elif defined _M_ALPHA
-	const char *gamename = "jagameaxp.dll";
-
-#ifdef NDEBUG
-	const char *debugdir = "releaseaxp";
-#else
-	const char *debugdir = "debugaxp";
-#endif //NDEBUG
-
-#endif //_M__IX86
+	gamename = "jagame" ARCH_STRING DLL_EXT;
+#endif
 
 	if (game_library)
 		Com_Error (ERR_FATAL, "Sys_GetGameAPI without Sys_UnloadingGame");
 
-	game_library = Sys_RetrieveDLL(gamename, debugdir);
+	game_library = Sys_RetrieveDLL(gamename);
 	if(!game_library)
 	{
 		char *buf;
@@ -585,12 +731,12 @@ Sys_LoadCgame
 Used to hook up a development dll
 =================
 */
-void * Sys_LoadCgame( int (**entryPoint)(int, ...), int (*systemcalls)(int, ...) ) 
+void * Sys_LoadCgame( intptr_t (**entryPoint)(int, ...), intptr_t (*systemcalls)(intptr_t, ...) ) 
 {
-	void	(*dllEntry)( int (*syscallptr)(int, ...) );
+	void	(*dllEntry)( intptr_t (*syscallptr)(intptr_t, ...) );
 
-	dllEntry = ( void (*)( int (*)( int, ... ) ) )GetProcAddress( game_library, "dllEntry" ); 
-	*entryPoint = (int (*)(int,...))GetProcAddress( game_library, "vmMain" );
+	dllEntry = ( void (*)( intptr_t (*)( intptr_t, ... ) ) )GetProcAddress( game_library, "dllEntry" ); 
+	*entryPoint = (intptr_t (*)(int,...))GetProcAddress( game_library, "vmMain" );
 	if ( !*entryPoint || !dllEntry ) {
 		FreeLibrary( game_library );
 		return NULL;
@@ -599,249 +745,6 @@ void * Sys_LoadCgame( int (**entryPoint)(int, ...), int (*systemcalls)(int, ...)
 	dllEntry( systemcalls );
 	return game_library;
 }
-
-/*
-========================================================================
-
-BACKGROUND FILE STREAMING
-
-========================================================================
-*/
-
-#if 1
-
-void Sys_InitStreamThread( void ) {
-}
-
-void Sys_ShutdownStreamThread( void ) {
-}
-
-void Sys_BeginStreamedFile( fileHandle_t f, int readAhead ) {
-}
-
-void Sys_EndStreamedFile( fileHandle_t f ) {
-}
-
-int Sys_StreamedRead( void *buffer, int size, int count, fileHandle_t f ) {
-   return FS_Read( buffer, size * count, f );
-}
-
-void Sys_StreamSeek( fileHandle_t f, int offset, int origin ) {
-   FS_Seek( f, offset, origin );
-}
-
-
-#else
-
-typedef struct {
-	HANDLE	threadHandle;
-	int		threadId;
-	CRITICAL_SECTION	crit;
-	fileHandle_t	file;
-	byte	*buffer;
-	qboolean	eof;
-	int		bufferSize;
-	int		streamPosition;	// next byte to be returned by Sys_StreamRead
-	int		threadPosition;	// next byte to be read from file
-} streamState_t;
-
-streamState_t	stream;
-
-/*
-===============
-Sys_StreamThread
-
-A thread will be sitting in this loop forever
-================
-*/
-void Sys_StreamThread( void ) {
-	int		buffer;
-	int		count;
-	int		readCount;
-	int		bufferPoint;
-	int		r;
-
-	while (1) {
-		Sleep( 10 );
-		EnterCriticalSection (&stream.crit);
-
-		// if there is any space left in the buffer, fill it up
-		while ( !stream.eof ) {
-			count = stream.bufferSize - (stream.threadPosition - stream.streamPosition);
-			if ( !count ) {
-				break;
-			}
-
-			bufferPoint = stream.threadPosition % stream.bufferSize;
-			buffer = stream.bufferSize - bufferPoint;
-			readCount = buffer < count ? buffer : count;
-
-			r = FS_Read( stream.buffer + bufferPoint, readCount, stream.file );
-			stream.threadPosition += r;
-
-			if ( r != readCount ) {
-				stream.eof = qtrue;
-				break;
-			}
-		}
-
-		LeaveCriticalSection (&stream.crit);
-	}
-}
-
-/*
-===============
-Sys_InitStreamThread
-
-================
-*/
-void Sys_InitStreamThread( void ) {
-
-	InitializeCriticalSection ( &stream.crit );
-
-	// don't leave the critical section until there is a
-	// valid file to stream, which will cause the StreamThread
-	// to sleep without any overhead
-	EnterCriticalSection( &stream.crit );
-
-	stream.threadHandle = CreateThread(
-	   NULL,	// LPSECURITY_ATTRIBUTES lpsa,
-	   0,		// DWORD cbStack,
-	   (LPTHREAD_START_ROUTINE)Sys_StreamThread,	// LPTHREAD_START_ROUTINE lpStartAddr,
-	   0,			// LPVOID lpvThreadParm,
-	   0,			//   DWORD fdwCreate,
-	   (unsigned long *) &stream.threadId);
-}
-
-/*
-===============
-Sys_ShutdownStreamThread
-
-================
-*/
-void Sys_ShutdownStreamThread( void ) {
-}
-
-
-/*
-===============
-Sys_BeginStreamedFile
-
-================
-*/
-void Sys_BeginStreamedFile( fileHandle_t f, int readAhead ) {
-	if ( stream.file ) {
-		Sys_EndStreamedFile( stream.file );
-	}
-
-	stream.file = f;
-	stream.buffer = (unsigned char *) Z_Malloc( readAhead );
-	stream.bufferSize = readAhead;
-	stream.streamPosition = 0;
-	stream.threadPosition = 0;
-	stream.eof = qfalse;
-
-	// let the thread start running
-	LeaveCriticalSection( &stream.crit );
-}
-
-/*
-===============
-Sys_EndStreamedFile
-
-================
-*/
-void Sys_EndStreamedFile( fileHandle_t f ) {
-	if ( f != stream.file ) {
-		Com_Error( ERR_FATAL, "Sys_EndStreamedFile: wrong file");
-	}
-	// don't leave critical section until another stream is started
-	EnterCriticalSection( &stream.crit );
-
-	stream.file = 0;
-	Z_Free( stream.buffer );
-
-}
-
-
-/*
-===============
-Sys_StreamedRead
-
-================
-*/
-int Sys_StreamedRead( void *buffer, int size, int count, fileHandle_t f ) {
-	int		available;
-	int		remaining;
-	int		sleepCount;
-	int		copy;
-	int		bufferCount;
-	int		bufferPoint;
-	byte	*dest;
-
-	dest = (byte *)buffer;
-	remaining = size * count;
-
-	if ( remaining <= 0 ) {
-		Com_Error( ERR_FATAL, "Streamed read with non-positive size" );
-	}
-
-	sleepCount = 0;
-	while ( remaining > 0 ) {
-		available = stream.threadPosition - stream.streamPosition;
-		if ( !available ) {
-			if ( stream.eof ) {
-				break;
-			}
-			if ( sleepCount == 1 ) {
-				Com_DPrintf( "Sys_StreamedRead: waiting\n" );
-			}
-			if ( ++sleepCount > 100 ) {
-				Com_Error( ERR_FATAL, "Sys_StreamedRead: thread has died");
-			}
-			Sleep( 10 );
-			continue;
-		}
-
-		bufferPoint = stream.streamPosition % stream.bufferSize;
-		bufferCount = stream.bufferSize - bufferPoint;
-
-		copy = available < bufferCount ? available : bufferCount;
-		if ( copy > remaining ) {
-			copy = remaining;
-		}
-		memcpy( dest, stream.buffer + bufferPoint, copy );
-		stream.streamPosition += copy;
-		dest += copy;
-		remaining -= copy;
-	}
-
-	return (count * size - remaining) / size;
-}
-
-/*
-===============
-Sys_StreamSeek
-
-================
-*/
-void Sys_StreamSeek( fileHandle_t f, int offset, int origin ) {
-
-	// halt the thread
-	EnterCriticalSection( &stream.crit );
-
-	// clear to that point
-	FS_Seek( f, offset, origin );
-	stream.streamPosition = 0;
-	stream.threadPosition = 0;
-	stream.eof = qfalse;
-
-	// let the thread start running at the new position
-	LeaveCriticalSection( &stream.crit );
-}
-
-#endif
-
 
 /*
 ========================================================================
@@ -933,7 +836,7 @@ sysEvent_t Sys_GetEvent( void ) {
 
 		len = strlen( s ) + 1;
 		b = (char *) Z_Malloc( len, TAG_EVENT, qfalse);
-		strcpy( b, s );
+		Q_strncpyz( b, s, len );
 		Sys_QueEvent( 0, SE_CONSOLE, 0, 0, len, b );
 	}
 
@@ -968,27 +871,6 @@ void Sys_In_Restart_f( void ) {
 	IN_Init();
 }
 
-static bool Sys_IsExpired()
-{
-#if 0
-//								sec min Hr Day Mon Yr
-    struct tm t_valid_start	= { 0, 0, 8, 23, 6, 103 };	//zero based months!
-//								sec min Hr Day Mon Yr
-    struct tm t_valid_end	= { 0, 0, 20, 30, 6, 103 };
-//    struct tm t_valid_end	= t_valid_start;
-//	t_valid_end.tm_mday += 8;
-	time_t startTime  = mktime( &t_valid_start);
-	time_t expireTime = mktime( &t_valid_end);
-	time_t now;
-	time(&now);
-	if((now < startTime) || (now> expireTime))
-	{
-		return true;
-	}
-#endif
-	return false;
-}
-
 /*
 ================
 Sys_Init
@@ -1000,143 +882,28 @@ are initialized
 #define OSR2_BUILD_NUMBER 1111
 #define WIN98_BUILD_NUMBER 1998
 
-#if MEM_DEBUG
-void SH_Register(void);
-#endif
-
 void Sys_Init( void ) {
-	int cpuid;
-
 	// make sure the timer is high precision, otherwise
 	// NT gets 18ms resolution
 	timeBeginPeriod( 1 );
 
 	Cmd_AddCommand ("in_restart", Sys_In_Restart_f);
-#if MEM_DEBUG
-	SH_Register();
-#endif
 
 	g_wv.osversion.dwOSVersionInfoSize = sizeof( g_wv.osversion );
 
 	if (!GetVersionEx (&g_wv.osversion))
 		Sys_Error ("Couldn't get OS info");
-	if (Sys_IsExpired()) {
-		g_wv.osversion.dwPlatformId = VER_PLATFORM_WIN32s;	//sneaky: hide the expire with this error
-	}
 
 	if (g_wv.osversion.dwMajorVersion < 4)
 		Sys_Error ("This game requires Windows version 4 or greater");
 	if (g_wv.osversion.dwPlatformId == VER_PLATFORM_WIN32s)
 		Sys_Error ("This game doesn't run on Win32s");
 
-	if ( g_wv.osversion.dwPlatformId == VER_PLATFORM_WIN32_NT )
-	{
-		Cvar_Set( "arch", "winnt" );
-	}
-	else if ( g_wv.osversion.dwPlatformId == VER_PLATFORM_WIN32_WINDOWS )
-	{
-		if ( LOWORD( g_wv.osversion.dwBuildNumber ) >= WIN98_BUILD_NUMBER )
-		{
-			Cvar_Set( "arch", "win98" );
-		}
-		else if ( LOWORD( g_wv.osversion.dwBuildNumber ) >= OSR2_BUILD_NUMBER )
-		{
-			Cvar_Set( "arch", "win95 osr2.x" );
-		}
-		else
-		{
-			Cvar_Set( "arch", "win95" );
-		}
-	}
-	else
-	{
-		Cvar_Set( "arch", "unknown Windows variant" );
-	}
+	Cvar_Set( "arch", OS_STRING " " ARCH_STRING );
 
 	// save out a couple things in rom cvars for the renderer to access
-	Cvar_Get( "win_hinstance", va("%i", (int)g_wv.hInstance), CVAR_ROM );
-	Cvar_Get( "win_wndproc", va("%i", (int)MainWndProc), CVAR_ROM );
-
-	//
-	// figure out our CPU
-	//
-	Cvar_Get( "sys_cpustring", "detect", CVAR_ROM );
-	if ( !Q_stricmp( Cvar_VariableString( "sys_cpustring"), "detect" ) )
-	{
-		Com_Printf( "...detecting CPU, found " );
-
-		cpuid = Sys_GetProcessorId();
-
-		switch ( cpuid )
-		{
-		case CPUID_GENERIC:
-			Cvar_Set( "sys_cpustring", "generic" );
-			break;
-		case CPUID_INTEL_UNSUPPORTED:
-			Cvar_Set( "sys_cpustring", "x86 (pre-Pentium)" );
-			break;
-		case CPUID_INTEL_PENTIUM:
-			Cvar_Set( "sys_cpustring", "x86 (P5/PPro, non-MMX)" );
-			break;
-		case CPUID_INTEL_MMX:
-			Cvar_Set( "sys_cpustring", "x86 (P5/Pentium2, MMX)" );
-			break;
-		case CPUID_INTEL_KATMAI:
-			Cvar_Set( "sys_cpustring", "Intel Pentium III" );
-			break;
-		case CPUID_INTEL_WILLIAMETTE:
-			Cvar_Set( "sys_cpustring", "Intel Pentium IV" );
-			break;
-		case CPUID_AMD_3DNOW:
-			Cvar_Set( "sys_cpustring", "AMD w/ 3DNow!" );
-			break;
-		case CPUID_AXP:
-			Cvar_Set( "sys_cpustring", "Alpha AXP" );
-			break;
-		default:
-			Com_Error( ERR_FATAL, "Unknown cpu type %d\n", cpuid );
-			break;
-		}
-	}
-	else
-	{
-		Com_Printf( "...forcing CPU type to " );
-		if ( !Q_stricmp( Cvar_VariableString( "sys_cpustring" ), "generic" ) )
-		{
-			cpuid = CPUID_GENERIC;
-		}
-		else if ( !Q_stricmp( Cvar_VariableString( "sys_cpustring" ), "x87" ) )
-		{
-			cpuid = CPUID_INTEL_PENTIUM;
-		}
-		else if ( !Q_stricmp( Cvar_VariableString( "sys_cpustring" ), "mmx" ) )
-		{
-			cpuid = CPUID_INTEL_MMX;
-		}
-		else if ( !Q_stricmp( Cvar_VariableString( "sys_cpustring" ), "3dnow" ) )
-		{
-			cpuid = CPUID_AMD_3DNOW;
-		}
-		else if ( !Q_stricmp( Cvar_VariableString( "sys_cpustring" ), "PentiumIII" ) )
-		{
-			cpuid = CPUID_INTEL_KATMAI;
-		}
-		else if ( !Q_stricmp( Cvar_VariableString( "sys_cpustring" ), "PentiumIV" ) )
-		{
-			cpuid = CPUID_INTEL_WILLIAMETTE;
-		}
-		else if ( !Q_stricmp( Cvar_VariableString( "sys_cpustring" ), "axp" ) )
-		{
-			cpuid = CPUID_AXP;
-		}
-		else
-		{
-			Com_Printf( "WARNING: unknown sys_cpustring '%s'\n", Cvar_VariableString( "sys_cpustring" ) );
-			cpuid = CPUID_GENERIC;
-		}
-	}
-	Cvar_SetValue( "sys_cpuid", cpuid );
-	Com_Printf( "%s\n", Cvar_VariableString( "sys_cpustring" ) );
+	Cvar_Get( "win_hinstance", va("%p", g_wv.hInstance), CVAR_ROM );
+	Cvar_Get( "win_wndproc", va("%p", MainWndProc), CVAR_ROM );
 
 	Cvar_Set( "username", Sys_GetCurrentUser() );
 
@@ -1162,8 +929,7 @@ static void QuickMemTest(void)
 		{
 			// err...
 			//
-			extern qboolean Language_IsAsian(void);
-			LPCSTR psContinue = Language_IsAsian() ? 
+			LPCSTR psContinue = re.Language_IsAsian() ? 
 								"Your machine failed to allocate %dMB in a memory test, which may mean you'll have problems running this game all the way through.\n\nContinue anyway?"
 								: 
 								SE_GetString("CON_TEXT_FAILED_MEMTEST");
@@ -1172,7 +938,7 @@ static void QuickMemTest(void)
 			#define GetYesNo(psQuery)	(!!(MessageBox(NULL,psQuery,"Query",MB_YESNO|MB_ICONWARNING|MB_TASKMODAL)==IDYES))
 			if (!GetYesNo(va(psContinue,iMemTestMegs)))
 			{
-				LPCSTR psNoMem = Language_IsAsian() ?
+				LPCSTR psNoMem = re.Language_IsAsian() ?
 								"Insufficient memory to run this game!\n"
 								:
 								SE_GetString("CON_TEXT_INSUFFICIENT_MEMORY");
@@ -1184,32 +950,105 @@ static void QuickMemTest(void)
 	}
 }
 
+/* Begin Sam Lantinga Public Domain 4/13/98 */
+
+static void UnEscapeQuotes(char *arg)
+{
+	char *last = NULL;
+
+	while (*arg) {
+		if (*arg == '"' && (last != NULL && *last == '\\')) {
+			char *c_curr = arg;
+			char *c_last = last;
+
+			while (*c_curr) {
+				*c_last = *c_curr;
+				c_last = c_curr;
+				c_curr++;
+			}
+			*c_last = '\0';
+		}
+		last = arg;
+		arg++;
+	}
+}
+
+/* Parse a command line buffer into arguments */
+static int ParseCommandLine(char *cmdline, char **argv)
+{
+	char *bufp;
+	char *lastp = NULL;
+	int argc, last_argc;
+
+	argc = last_argc = 0;
+	for (bufp = cmdline; *bufp;) {
+		/* Skip leading whitespace */
+		while (isspace(*bufp)) {
+			++bufp;
+		}
+		/* Skip over argument */
+		if (*bufp == '"') {
+			++bufp;
+			if (*bufp) {
+				if (argv) {
+					argv[argc] = bufp;
+				}
+				++argc;
+			}
+			/* Skip over word */
+			lastp = bufp;
+			while (*bufp && (*bufp != '"' || *lastp == '\\')) {
+				lastp = bufp;
+				++bufp;
+			}
+		} else {
+			if (*bufp) {
+				if (argv) {
+					argv[argc] = bufp;
+				}
+				++argc;
+			}
+			/* Skip over word */
+			while (*bufp && !isspace(*bufp)) {
+				++bufp;
+			}
+		}
+		if (*bufp) {
+			if (argv) {
+				*bufp = '\0';
+			}
+			++bufp;
+		}
+
+		/* Strip out \ from \" sequences */
+		if (argv && last_argc != argc) {
+			UnEscapeQuotes(argv[last_argc]);
+		}
+		last_argc = argc;
+	}
+	if (argv) {
+		argv[argc] = NULL;
+	}
+	return (argc);
+}
+
+/* End Sam Lantinga Public Domain 4/13/98 */
 
 //=======================================================================
 //int	totalMsec, countMsec;
 
-/*
-==================
-WinMain
+#ifndef DEFAULT_BASEDIR
+#	define DEFAULT_BASEDIR Sys_BinaryPath()
+#endif
 
-==================
-*/
-int WINAPI WinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
-	char		cwd[MAX_OSPATH];
+int main ( int argc, char **argv )
+{
+	char	commandLine[ MAX_STRING_CHARS ] = { 0 };
 //	int			startTime, endTime;
 
    SET_CRT_DEBUG_FIELD( _CRTDBG_LEAK_CHECK_DF );
 //   _CrtSetBreakAlloc(34804);
 
-    // should never get a previous instance in Win32
-    if ( hPrevInstance ) {
-        return 0;
-	}
-
-	g_wv.hInstance = hInstance;
-	Q_strncpyz( sys_cmdline, lpCmdLine, sizeof( sys_cmdline ) );
-
-	// done before Com/Sys_Init since we need this for error output
 	Sys_CreateConsole();
 
 	// no abort/retry/fail errors
@@ -1218,19 +1057,27 @@ int WINAPI WinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLin
 	// get the initial time base
 	Sys_Milliseconds();
 
-#if 0
-	// if we find the CD, add a +set cddir xxx command line
-	Sys_ScanForCD();
-#endif
+	Sys_SetBinaryPath( Sys_Dirname( argv[ 0 ] ) );
+	Sys_SetDefaultInstallPath( DEFAULT_BASEDIR );
 
-	Sys_InitStreamThread();
+	// Concatenate the command line for passing to Com_Init
+	for( int i = 1; i < argc; i++ )
+	{
+		const bool containsSpaces = (strchr(argv[i], ' ') != NULL);
+		if (containsSpaces)
+			Q_strcat( commandLine, sizeof( commandLine ), "\"" );
 
-	Com_Init( sys_cmdline );
+		Q_strcat( commandLine, sizeof( commandLine ), argv[ i ] );
+
+		if (containsSpaces)
+			Q_strcat( commandLine, sizeof( commandLine ), "\"" );
+
+		Q_strcat( commandLine, sizeof( commandLine ), " " );
+	}
+
+	Com_Init( commandLine );
 
 	QuickMemTest();
-
-	_getcwd (cwd, sizeof(cwd));
-	Com_Printf("Working directory: %s\n", cwd);
 
 	// hide the early console since we've reached the point where we
 	// have a working graphics subsystems
@@ -1244,6 +1091,7 @@ int WINAPI WinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLin
 		if ( g_wv.isMinimized ) {
 			Sleep( 5 );
 		}
+
 #ifdef _DEBUG
 		if (!g_wv.activeApp)
 		{
@@ -1251,22 +1099,55 @@ int WINAPI WinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLin
 		}
 #endif // _DEBUG
 
-		// set low precision every frame, because some system calls
-		// reset it arbitrarily
-//		_controlfp( _PC_24, _MCW_PC );
-
-//		startTime = Sys_Milliseconds();
-
 		// make sure mouse and joystick are only called once a frame
 		IN_Frame();
 
 		// run the game
 		Com_Frame();
+	}
+}
 
-//		endTime = Sys_Milliseconds();
-//		totalMsec += endTime - startTime;
-//		countMsec++;
+/*
+==================
+WinMain
+
+==================
+*/
+int WINAPI WinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
+	// should never get a previous instance in Win32
+    if ( hPrevInstance ) {
+        return 0;
 	}
 
+	/* Begin Sam Lantinga Public Domain 4/13/98 */
+
+	TCHAR *text = GetCommandLine();
+	char *cmdline = _strdup(text);
+	if ( cmdline == NULL ) {
+		MessageBox(NULL, "Out of memory - aborting", "Fatal Error", MB_ICONEXCLAMATION | MB_OK);
+		return 0;
+	}
+
+	int    argc = ParseCommandLine(cmdline, NULL);
+	char **argv = (char **)alloca(sizeof(char *) * argc + 1);
+	if ( argv == NULL ) {
+		MessageBox(NULL, "Out of memory - aborting", "Fatal Error", MB_ICONEXCLAMATION | MB_OK);
+		return 0;
+	}
+	ParseCommandLine(cmdline, argv);
+
+	/* End Sam Lantinga Public Domain 4/13/98 */
+
+	g_wv.hInstance = hInstance;
+
+	/* Begin Sam Lantinga Public Domain 4/13/98 */
+
+	main(argc, argv);
+
+	free(cmdline);
+
+	/* End Sam Lantinga Public Domain 4/13/98 */
+
 	// never gets here
+	return 0;
 }

@@ -1,14 +1,36 @@
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 // Interpreted Block Stream Functions
 //
 //	-- jweier
 
 // this include must remain at the top of every Icarus CPP file
-#include "stdafx.h"
+#include "StdAfx.h"
 
 #include "IcarusInterface.h"
 #include "IcarusImplementation.h"
 
-#include "BlockStream.h"
+#ifdef __linux__
+#include <string.h>
+#include <stdio.h>
+#endif
+#include "blockstream.h"
 
 /*
 ===================================================================================================
@@ -98,23 +120,28 @@ ReadMember
 int CBlockMember::ReadMember( char **stream, long *streamPos, CIcarus* icarus )
 {
 	IGameInterface* game = icarus->GetGame();
-	m_id = *(int *) (*stream + *streamPos);
+	m_id = LittleLong(*(int *) (*stream + *streamPos));
 	*streamPos += sizeof( int );
 
 	if ( m_id == CIcarus::ID_RANDOM )
 	{//special case, need to initialize this member's data to Q3_INFINITE so we can randomize the number only the first time random is checked when inside a wait
 		m_size = sizeof( float );
-		*streamPos += sizeof( long );
+		*streamPos += sizeof( int );
 		m_data = game->Malloc( m_size );
 		float infinite = game->MaxFloat();
 		memcpy( m_data, &infinite, m_size );
 	}
 	else
 	{
-		m_size = *(long *) (*stream + *streamPos);
-		*streamPos += sizeof( long );
+		m_size = LittleLong(*(int *) (*stream + *streamPos));
+		*streamPos += sizeof( int );
 		m_data = game->Malloc( m_size );
 		memcpy( m_data, (*stream + *streamPos), m_size );
+#ifdef Q3_BIG_ENDIAN
+		// only TK_INT, TK_VECTOR and TK_FLOAT has to be swapped, but just in case
+		if (m_size == 4 && m_id != CIcarus::TK_STRING && m_id != CIcarus::TK_IDENTIFIER && m_id != CIcarus::TK_CHAR)
+			*(int *)m_data = LittleLong(*(int *)m_data);
+#endif
 	}
 	*streamPos += m_size;
 	
@@ -316,9 +343,9 @@ GetMember
 
 CBlockMember *CBlock::GetMember( int memberNum )
 {
-	if ( memberNum > GetNumMembers()-1 )
+	if ( memberNum >= GetNumMembers() )
 	{
-		return false;
+		return NULL;
 	}
 	return m_members[ memberNum ];
 }
@@ -331,7 +358,7 @@ GetMemberData
 
 void *CBlock::GetMemberData( int memberNum )
 {
-	if ( memberNum > GetNumMembers()-1 )
+	if ( memberNum >= GetNumMembers() )
 	{
 		return NULL;
 	}
@@ -352,7 +379,7 @@ CBlock *CBlock::Duplicate( CIcarus* icarus )
 	newblock = new CBlock;
 
 	if ( newblock == NULL )
-		return false;
+		return NULL;
 
 	newblock->Create( m_id );
 
@@ -373,9 +400,11 @@ CBlock *CBlock::Duplicate( CIcarus* icarus )
 ===================================================================================================
 */
 
+const int IBI_HEADER_ID_LENGTH = 4; // Length of s_IBI_HEADER_ID + 1 (for null terminating byte)
 char* CBlockStream::s_IBI_EXT				= ".IBI";	//(I)nterpreted (B)lock (I)nstructions
 char* CBlockStream::s_IBI_HEADER_ID			= "IBI";
 const float	CBlockStream::s_IBI_VERSION		= 1.57f;
+
 
 /*
 -------------------------
@@ -402,25 +431,11 @@ Create
 
 int CBlockStream::Create( char *filename )
 {	
-	// strip extension
-	int		extensionloc = strlen(filename);
-	while ( (filename[extensionloc] != '.') && (extensionloc >= 0) )
-	{
-		extensionloc--;
-	}
-	if ( extensionloc < 0 )
-	{
-		strcpy(m_fileName, filename);
-	}
-	else
-	{
-		strncpy(m_fileName, filename, extensionloc);
-		m_fileName[extensionloc] = '\0';
-	}
-	// add extension
-	strcat((char *) m_fileName, s_IBI_EXT);
+	//Strip the extension and add the BLOCK_EXT extension
+	COM_StripExtension( filename, m_fileName, sizeof(m_fileName) );
+	COM_DefaultExtension( m_fileName, sizeof(m_fileName), s_IBI_EXT );
 
-	if ( ((m_fileHandle = fopen(m_fileName, "wb")) == NULL) )
+	if ( (m_fileHandle = fopen(m_fileName, "wb")) == NULL )
 	{
 		return false;
 	}
@@ -507,10 +522,10 @@ int CBlockStream::ReadBlock( CBlock *get, CIcarus* icarus )
 	if (!BlockAvailable())
 		return false;
 
-	b_id		= *(int *) (m_stream + m_streamPos);
+	b_id		= LittleLong(*(int *) (m_stream + m_streamPos));
 	m_streamPos += sizeof( b_id );
 
-	numMembers	= *(int *) (m_stream + m_streamPos);
+	numMembers	= LittleLong(*(int *) (m_stream + m_streamPos));
 	m_streamPos += sizeof( numMembers );
 
 	flags		= *(unsigned char*) (m_stream + m_streamPos);
@@ -522,23 +537,12 @@ int CBlockStream::ReadBlock( CBlock *get, CIcarus* icarus )
 	get->Create( b_id );
 	get->SetFlags( flags );
 
-	// Stream blocks are generally temporary as they
-	// are just used in an initial parsing phase...
-#ifdef _XBOX
-	extern void Z_SetNewDeleteTemporary(bool bTemp);
-	Z_SetNewDeleteTemporary(true);
-#endif
-
 	while ( numMembers-- > 0)
 	{	
 		bMember = new CBlockMember;
 		bMember->ReadMember( &m_stream, &m_streamPos, icarus );
 		get->AddMember( bMember );
 	}
-
-#ifdef _XBOX
-	Z_SetNewDeleteTemporary(false);
-#endif
 
 	return true;
 }
@@ -551,7 +555,7 @@ Open
 
 int CBlockStream::Open( char *buffer, long size )
 {
-	char	id_header[sizeof(s_IBI_HEADER_ID)];
+	char	id_header[IBI_HEADER_ID_LENGTH];
 	float	version;
 	
 	Init();
@@ -560,12 +564,12 @@ int CBlockStream::Open( char *buffer, long size )
 
 	m_stream = buffer;
 
-	for ( int i = 0; i < sizeof( id_header ); i++ )
+	for ( size_t i = 0; i < sizeof( id_header ); i++ )
 	{
 		id_header[i] = *(m_stream + m_streamPos++);
 	}
 
-	version = *(float *) (m_stream + m_streamPos);
+	version = LittleFloat(*(float *) (m_stream + m_streamPos));
 	m_streamPos += sizeof( version );
 
 	//Check for valid header

@@ -1,9 +1,28 @@
+/*
+This file is part of Jedi Knight 2.
+
+    Jedi Knight 2 is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Knight 2 is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Knight 2.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 // Task Manager header file
 
 #ifndef __TASK_MANAGER__
 #define __TASK_MANAGER__
 
-#include "Sequencer.h"
+#include "sequencer.h"
+#include "../../code/qcommon/q_shared.h"
 
 #define MAX_TASK_NAME	64
 
@@ -38,19 +57,19 @@ public:
 
 	void	Free( void );
 
-	DWORD	GetTimeStamp( void )	const	{	return m_timeStamp;				}
+	uint32_t GetTimeStamp( void )	const	{	return m_timeStamp;				}
 	CBlock	*GetBlock( void )		const	{	return m_block;					}
 	int		GetGUID( void)			const	{	return m_id;					}
 	int		GetID( void )			const	{	return m_block->GetBlockID();	}
 
-	void	SetTimeStamp( DWORD	timeStamp )		{	m_timeStamp = timeStamp;	}
+	void	SetTimeStamp( uint32_t timeStamp )	{	m_timeStamp = timeStamp;	}
 	void	SetBlock( CBlock *block )			{	m_block = block;			}
 	void	SetGUID( int id )					{	m_id = id;					}
 
 protected:
 
 	int		m_id;
-	DWORD	m_timeStamp;
+	uint32_t	m_timeStamp;
 	CBlock	*m_block;
 };
 
@@ -72,7 +91,7 @@ public:
 	void SetGUID( int GUID );
 	void SetParent( CTaskGroup *group )	{	m_parent = group;	}
 
-	bool Complete(void)		const { return ( m_numCompleted == m_completedTasks.size() ); }
+	bool Complete(void)		const { return ( m_numCompleted == (int)m_completedTasks.size() ); }
 
 	bool MarkTaskComplete( int id );
 

@@ -1,6 +1,21 @@
+/*
+This file is part of Jedi Knight 2.
 
-// this include must remain at the top of every CPP file
-#include "common_headers.h"
+    Jedi Knight 2 is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Knight 2 is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Knight 2.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 
 #if !defined(FX_SCHEDULER_H_INC)
 	#include "FxScheduler.h"
@@ -65,7 +80,7 @@ void CPrimitiveTemplate::operator=(const CPrimitiveTemplate &that)
 {
 	// I'm assuming that doing a memcpy wouldn't work here
 	// If you are looking at this and know a better way to do this, please tell me.
-	strcpy( mName, that.mName );
+	Q_strncpyz( mName, that.mName, sizeof(mName) );
 
 	mType				= that.mType;
 
@@ -2249,7 +2264,7 @@ bool CPrimitiveTemplate::ParsePrimitive( CGPGroup *grp )
 			if ( val )
 			{
 				// just stash the descriptive name of the primitive
-				strcpy( mName, val );
+				Q_strncpyz( mName, val, sizeof(mName) );
 			}
 		}
 		else

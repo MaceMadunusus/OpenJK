@@ -1,3 +1,21 @@
+/*
+This file is part of Jedi Knight 2.
+
+    Jedi Knight 2 is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Knight 2 is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Knight 2.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 // ICARUS Engine Interface File
 //
 //	This file is the only section of the ICARUS systems that 
@@ -20,12 +38,16 @@
 #include "b_local.h"
 #include "events.h"
 #include "g_nav.h"
-#include "..\cgame\cg_camera.h"
-#include "..\game\objectives.h"
+#include "../cgame/cg_camera.h"
+#include "../game/objectives.h"
 #include "g_roff.h"
-#include "..\cgame\cg_local.h"
+#include "../cgame/cg_local.h"
 #include "g_icarus.h"
 #include "wp_saber.h"
+
+#ifndef _WIN32
+#include <cstdlib>
+#endif
 
 extern int ICARUS_LinkEntity( int entID, CSequencer *sequencer, CTaskManager *taskManager );
 
@@ -80,7 +102,7 @@ stringID_table_t BSTable[] =
 	ENUM2STRING(BS_REMOVE),//# Waits for player to leave PVS then removes itself
 	ENUM2STRING(BS_CINEMATIC),//# Does nothing but face it's angles and move to a goal if it has one
 	//the rest are internal only
-	"",				-1,
+	{"",				-1},
 };
 
 
@@ -136,7 +158,7 @@ stringID_table_t WPTable[] =
 	ENUM2STRING(WP_TIE_FIGHTER),
 	ENUM2STRING(WP_RAPID_FIRE_CONC),
 	ENUM2STRING(WP_BLASTER_PISTOL),	// apparently some enemy only version of the blaster
-	"", NULL
+	{"", 0}
 };
 
 stringID_table_t INVTable[] =
@@ -146,26 +168,26 @@ stringID_table_t INVTable[] =
 	ENUM2STRING(INV_SEEKER),
 	ENUM2STRING(INV_LIGHTAMP_GOGGLES),
 	ENUM2STRING(INV_SENTRY),
-	"", NULL
+	{"", 0}
 };
 
 stringID_table_t eventTable[] =
 {
 	//BOTH_h
 	//END
-	"",				EV_BAD,
+	{"",				EV_BAD},
 };
 
 stringID_table_t DMSTable[] =
 {
-	"NULL",-1,
+	{"NULL",-1},
 	ENUM2STRING(DM_AUTO),	//# let the game determine the dynamic music as normal
 	ENUM2STRING(DM_SILENCE),	//# stop the music
 	ENUM2STRING(DM_EXPLORE),	//# force the exploration music to play
 	ENUM2STRING(DM_ACTION),	//# force the action music to play
 	ENUM2STRING(DM_BOSS),	//# force the boss battle music to play (if there is any)
 	ENUM2STRING(DM_DEATH),	//# force the "player dead" music to play
-	"", -1
+	{"", -1}
 };
 
 stringID_table_t setTable[] =
@@ -383,7 +405,7 @@ stringID_table_t setTable[] =
 	ENUM2STRING(SET_HUD),
 
 //FIXME: add BOTH_ attributes here too
-	"",	SET_,
+	{"",	SET_},
 };
 
 qboolean COM_ParseString( char **data, char **s ); 
@@ -439,11 +461,11 @@ static void Q3_CenterPrint ( const char *format, ... )
 	{
 		if( text[0] == '!')
 		{
-			gi.SendServerCommand( NULL, "cp \"%s\"", (text+1) );
+			gi.SendServerCommand( 0, "cp \"%s\"", (text+1) );
 			return;
 		}
 
-		gi.SendServerCommand( NULL, "cp \"%s\"", text );
+		gi.SendServerCommand( 0, "cp \"%s\"", text );
 	}
 
 	Q3_DebugPrint( WL_VERBOSE, "%s\n", text); 	// Just a developers note
@@ -862,7 +884,7 @@ Prints a message in the center of the screen
 */
 static void Q3_ScrollText ( const char *id)
 {
-	gi.SendServerCommand( NULL, "st \"%s\"", id);
+	gi.SendServerCommand( 0, "st \"%s\"", id);
 
 	return;
 }
@@ -876,7 +898,7 @@ Prints a message in the center of the screen giving it an LCARS frame around it
 */
 static void Q3_LCARSText ( const char *id)
 {
-	gi.SendServerCommand( NULL, "lt \"%s\"", id);
+	gi.SendServerCommand( 0, "lt \"%s\"", id);
 
 	return;
 }
@@ -894,13 +916,13 @@ static gentity_t *Q3_GetEntityByName( const char *name )
 	entlist_t::iterator		ei;
 	char					temp[1024];
 
-	if ( name == NULL || name[0] == NULL )
+	if ( name == NULL || name[0] == '\0' )
 		return NULL;
 
 	strncpy( (char *) temp, name, sizeof(temp) );
 	temp[sizeof(temp)-1] = 0;
 
-	ei = ICARUS_EntList.find( strupr( (char *) temp ) );
+	ei = ICARUS_EntList.find( Q_strupr( (char *) temp ) );
 
 	if ( ei == ICARUS_EntList.end() )
 		return NULL;
@@ -921,7 +943,7 @@ Q3_GetTime
 Get the current game time
 =============
 */
-static DWORD Q3_GetTime( void )
+static unsigned int Q3_GetTime( void )
 {
 	return level.time;
 }
@@ -990,10 +1012,10 @@ static int Q3_PlaySound( int taskID, int entID, const char *name, const char *ch
 	qboolean		type_voice = qfalse;
 
 	Q_strncpyz( finalName, name, MAX_QPATH, 0 );
-	strupr(finalName);
+	Q_strupr(finalName);
 	//G_AddSexToMunroString( finalName, qtrue );
 
-	COM_StripExtension( (const char *)finalName, finalName );
+	COM_StripExtension( (const char *)finalName, finalName, sizeof(finalName) );
 
 	int soundHandle = G_SoundIndex( (char *) finalName );
 	bool bBroadcast = false;
@@ -1035,7 +1057,7 @@ static int Q3_PlaySound( int taskID, int entID, const char *name, const char *ch
 		{
 			if ( in_camera)	// Cinematic
 			{					
-				gi.SendServerCommand( NULL, "ct \"%s\" %i", finalName, soundHandle );
+				gi.SendServerCommand( 0, "ct \"%s\" %i", finalName, soundHandle );
 			}
 			else //if (precacheWav[i].speaker==SP_NONE)	//  lower screen text
 			{
@@ -1044,7 +1066,7 @@ static int Q3_PlaySound( int taskID, int entID, const char *name, const char *ch
 				//
 				if (bBroadcast || (DistanceSquared(ent->currentOrigin, ent2->currentOrigin) < ((voice_chan == CHAN_VOICE_ATTEN)?(350 * 350):(1200 * 1200)) ) )
 				{
-					gi.SendServerCommand( NULL, "ct \"%s\" %i", finalName, soundHandle );
+					gi.SendServerCommand( 0, "ct \"%s\" %i", finalName, soundHandle );
 				}
 			}
 		}
@@ -1053,7 +1075,7 @@ static int Q3_PlaySound( int taskID, int entID, const char *name, const char *ch
 		{
 			if ( in_camera)	// Cinematic text
 			{							
-				gi.SendServerCommand( NULL, "ct \"%s\" %i", finalName, soundHandle);
+				gi.SendServerCommand( 0, "ct \"%s\" %i", finalName, soundHandle);
 			}
 		}
 
@@ -2409,9 +2431,7 @@ static void Q3_SetHealth( int entID, int data )
 			//delay respawn for 2 seconds
 			ent->client->respawnTime = level.time + 2000;
 			//stop all scripts
-			if (Q_stricmpn(level.mapname,"_holo",5)) {
-				stop_icarus = qtrue;
-			}
+			stop_icarus = qtrue;
 			//make the team killable
 			//G_MakeTeamVulnerable();
 		}
@@ -2481,7 +2501,7 @@ static qboolean Q3_SetBState( int entID, const char *bs_name )
 	}
 
 	bSID = (bState_t)(GetIDForString( BSTable, bs_name ));
-	if ( bSID > -1 )
+	if ( bSID != (bState_t)-1 )
 	{
 		if ( bSID == BS_SEARCH || bSID == BS_WANDER )
 		{
@@ -2607,7 +2627,7 @@ static qboolean Q3_SetTempBState( int entID, const char *bs_name )
 	}
 
 	bSID = (bState_t)(GetIDForString( BSTable, bs_name ));
-	if ( bSID > -1 )
+	if ( bSID != (bState_t)-1 )
 	{
 		ent->NPC->tempBehavior = bSID;
 	}
@@ -2657,7 +2677,7 @@ static void Q3_SetDefaultBState( int entID, const char *bs_name )
 	}
 
 	bSID = (bState_t)(GetIDForString( BSTable, bs_name ));
-	if ( bSID > -1 )
+	if ( bSID != (bState_t)-1 )
 	{
 		ent->NPC->defaultBehavior = bSID;
 	}
@@ -2958,11 +2978,11 @@ static void Q3_SetWidth( int entID, int data )
 ============
 Q3_GetTimeScale
   Description	: 
-  Return type	: static DWORD 
+  Return type	: static unsigned int 
   Argument		: void
 ============
 */
-static DWORD Q3_GetTimeScale( void )
+static unsigned int Q3_GetTimeScale( void )
 {
 	//return	Q3_TIME_SCALE;
 	return g_timescale->value;
@@ -5802,7 +5822,7 @@ static void Q3_AddRHandModel( int entID, char *addModel)
 {
 	gentity_t	*ent  = &g_entities[entID];
 
-	ent->cinematicModel = gi.G2API_InitGhoul2Model(ent->ghoul2, addModel, G_ModelIndex( addModel ), NULL, NULL, 0, 0);
+	ent->cinematicModel = gi.G2API_InitGhoul2Model(ent->ghoul2, addModel, G_ModelIndex( addModel ), NULL_HANDLE, NULL_HANDLE, 0, 0);
 	if ( ent->cinematicModel != -1 )
 	{
 		// attach it to the hand
@@ -5820,7 +5840,7 @@ static void Q3_AddLHandModel( int entID, char *addModel)
 {
 	gentity_t	*ent  = &g_entities[entID];
 
-	ent->cinematicModel = gi.G2API_InitGhoul2Model(ent->ghoul2, addModel, G_ModelIndex( addModel ), NULL, NULL, 0, 0);
+	ent->cinematicModel = gi.G2API_InitGhoul2Model(ent->ghoul2, addModel, G_ModelIndex( addModel ), NULL_HANDLE, NULL_HANDLE, 0, 0);
 	if ( ent->cinematicModel != -1 )
 	{
 		// attach it to the hand
@@ -6526,6 +6546,14 @@ static void Q3_Set( int taskID, int entID, const char *type_name, const char *da
 	float		float_data;
 	int			int_data, toSet;
 	vec3_t		vector_data;
+
+	// eezstreet: In response to issue #75 (Cvars being affected by set command)
+	if( !Q_stricmpn(type_name, "cvar_", 5) &&
+		strlen(type_name) > 5 )
+	{
+		cgi_Cvar_Set(type_name+5, data);
+		return;
+	}
 
 	//Set this for callbacks
 	toSet = GetIDForString( setTable, type_name );
@@ -7890,6 +7918,13 @@ static int Q3_GetFloat( int entID, int type, const char *name, float *value )
 		return false;
 	}
 
+	if( !Q_stricmpn(name, "cvar_", 5) &&
+		strlen(name) > 5 )
+	{
+		*value = (float)gi.Cvar_VariableIntegerValue(name+5);
+		return true;
+	}
+
 	int toGet = GetIDForString( setTable, name );	//FIXME: May want to make a "getTable" as well
 	//FIXME: I'm getting really sick of these huge switch statements!
 
@@ -8215,6 +8250,7 @@ static int Q3_GetFloat( int entID, int type, const char *name, float *value )
 			return false;
 		}
 		*value = (ent->NPC->scriptFlags&SCF_IGNORE_ALERTS);
+		break;
 
 	case SET_DONTSHOOT://## %t="BOOL_TYPES" # Others won't shoot you
 		*value = (ent->flags&FL_DONT_SHOOT);
@@ -8575,6 +8611,13 @@ static int Q3_GetString( int entID, int type, const char *name, char **value )
 	if ( !ent )
 	{
 		return false;
+	}
+
+	if( !Q_stricmpn(name, "cvar_", 5) &&
+		strlen(name) > 5 )
+	{
+		gi.Cvar_VariableStringBuffer(name+5, *value, strlen(*value));
+		return true;
 	}
 
 	int toGet = GetIDForString( setTable, name );	//FIXME: May want to make a "getTable" as well
@@ -9128,7 +9171,7 @@ void Q3_DebugPrint( int level, const char *format, ... )
 				buffer = (char *) text;
 				buffer += 5;
 
-				if ( ( entNum < 0 ) || ( entNum > MAX_GENTITIES ) )
+				if ( ( entNum < 0 ) || ( entNum >= MAX_GENTITIES ) )
 					entNum = 0;
 
 				Com_Printf ( S_COLOR_BLUE"DEBUG: %s(%d): %s\n", g_entities[entNum].script_targetname, entNum, buffer );
@@ -9233,7 +9276,7 @@ void Interface_Init( interface_export_t *pe )
 	pe->I_FreeVariable			=	Q3_FreeVariable;
 
 	//Save / Load functions
-	pe->I_WriteSaveData			=	(int(*)(unsigned long, void *, int))gi.AppendToSaveGame;
+	pe->I_WriteSaveData			=	(int(*)(unsigned int, void *, int))gi.AppendToSaveGame;
 	pe->I_ReadSaveData			=	gi.ReadFromSaveGame;
 	pe->I_LinkEntity			=	ICARUS_LinkEntity;
 

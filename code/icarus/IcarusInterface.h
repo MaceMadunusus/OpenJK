@@ -1,6 +1,26 @@
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 #pragma once
 #ifndef ICARUSINTERFACE_DEFINED
 #define ICARUSINTERFACE_DEFINED
+
+#include "../qcommon/q_shared.h"
 
 // IcarusInterface.h: ICARUS Interface header file.
 // -Date: ~October, 2002
@@ -81,7 +101,7 @@ public:
 	virtual void	CenterPrint( const char *format, ... ) = 0;
 	virtual void	DebugPrint( e_DebugPrintLevel, const char *, ... ) = 0;
 	virtual unsigned int GetTime( void ) = 0;							//Gets the current time
-	virtual int 	PlaySound( int taskID, int gameID, const char *name, const char *channel ) = 0;
+	virtual int 	PlayIcarusSound( int taskID, int gameID, const char *name, const char *channel ) = 0;
 	virtual void	Lerp2Pos( int taskID, int gameID, float origin[3], float angles[3], float duration ) = 0;
 	virtual void	Lerp2Angles( int taskID, int gameID, float angles[3], float duration ) = 0;
 	virtual int		GetTag( int gameID, const char *name, int lookup, float info[3] ) = 0;
@@ -120,8 +140,8 @@ public:
 
 	// Save / Load functions
 
-	virtual int		WriteSaveData( unsigned long chid, void *data, int length ) = 0;
-	virtual int		ReadSaveData( unsigned long chid, void *address, int length, void **addressptr = NULL )  = 0;
+	virtual int		WriteSaveData( unsigned int chid, void *data, int length ) = 0;
+	virtual int		ReadSaveData( unsigned int chid, void *address, int length, void **addressptr = NULL )  = 0;
 	virtual int		LinkGame( int gameID, int icarusID ) = 0;
 	
 	// Access functions

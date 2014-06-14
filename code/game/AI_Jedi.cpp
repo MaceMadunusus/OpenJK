@@ -1,11 +1,29 @@
-// leave this line at the top of all AI_xxxx.cpp files for PCH reasons...
-#include "g_headers.h"
+/*
+This file is part of Jedi Academy.
 
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
 
 #include "b_local.h"
 #include "g_nav.h"
 #include "anims.h"
 #include "wp_saber.h"
+#include "../qcommon/tri_coll_test.h"
+#include "g_navigator.h"
+#include "../cgame/cg_local.h"
+#include "g_functions.h"
 
 //Externs
 extern qboolean G_ValidEnemy( gentity_t *self, gentity_t *enemy );
@@ -1837,7 +1855,7 @@ static void Jedi_CombatDistance( int enemy_dist )
 							}
 						}
 						else if ( WP_ForcePowerUsable( NPC, FP_LIGHTNING, 0 ) 
-							&& ((NPCInfo->scriptFlags&SCF_DONT_FIRE)&&Q_stricmp("cultist_lightning",NPC->NPC_type) || Q_irand( 0, 1 )) )
+							&& (((NPCInfo->scriptFlags&SCF_DONT_FIRE)&&Q_stricmp("cultist_lightning",NPC->NPC_type)) || Q_irand( 0, 1 )) )
 						{
 							ForceLightning( NPC );
 							if ( NPC->client->ps.forcePowerLevel[FP_LIGHTNING] > FORCE_LEVEL_1 )
@@ -1850,7 +1868,7 @@ static void Jedi_CombatDistance( int enemy_dist )
 						else if ( NPC->health < NPC->max_health * 0.75f
 							&& Q_irand( FORCE_LEVEL_0, NPC->client->ps.forcePowerLevel[FP_DRAIN] ) > FORCE_LEVEL_1
 							&& WP_ForcePowerUsable( NPC, FP_DRAIN, 0 ) 
-							&& ((NPCInfo->scriptFlags&SCF_DONT_FIRE)&&Q_stricmp("cultist_drain",NPC->NPC_type) || Q_irand( 0, 1 )) )
+							&& (((NPCInfo->scriptFlags&SCF_DONT_FIRE)&&Q_stricmp("cultist_drain",NPC->NPC_type)) || Q_irand( 0, 1 )) )
 						{
 							ForceDrain2( NPC );
 							NPC->client->ps.weaponTime = Q_irand( 1000, 3000+(g_spskill->integer*500) );
@@ -2725,11 +2743,7 @@ int Jedi_ReCalcParryTime( gentity_t *self, evasionType_t evasionType )
 				}
 				else if ( self->NPC->rank >= RANK_LT_JG )
 				{//fencers, bosses, shadowtroopers, luke, desann, et al use the norm
-					if ( Q_irand( 0, 2 ) )
-					{//medium speed parry
-						baseTime = baseTime;
-					}
-					else
+					if ( !Q_irand( 0, 2 ) )
 					{//with the occasional fast parry
 						baseTime = ceil(baseTime/2.0f);
 					}
@@ -2934,7 +2948,7 @@ evasionType_t Jedi_SaberBlockGo( gentity_t *self, usercmd_t *cmd, vec3_t pHitloc
 	float zdiff;
 	int	  duckChance = 0;
 	int	  dodgeAnim = -1;
-	qboolean	saberBusy = qfalse, evaded = qfalse;
+	qboolean	saberBusy = qfalse;
 	evasionType_t	evasionType = EVASION_NONE;
 
 	if ( !self || !self->client )
@@ -3081,7 +3095,6 @@ evasionType_t Jedi_SaberBlockGo( gentity_t *self, usercmd_t *cmd, vec3_t pHitloc
 						TIMER_Start( self, "strafeLeft", Q_irand( 500, 1500 ) );
 						TIMER_Set( self, "strafeRight", 0 );
 						evasionType = EVASION_DUCK;
-						evaded = qtrue;
 					}
 					else if ( Q_irand( 0, 1 ) )
 					{
@@ -3102,7 +3115,6 @@ evasionType_t Jedi_SaberBlockGo( gentity_t *self, usercmd_t *cmd, vec3_t pHitloc
 						{
 							TIMER_Start( self, "duck", Q_irand( 500, 1500 ) );
 							evasionType = EVASION_DUCK_PARRY;
-							evaded = qtrue;
 							if ( d_JediAI->integer )
 							{
 								gi.Printf( "duck " );
@@ -3131,7 +3143,6 @@ evasionType_t Jedi_SaberBlockGo( gentity_t *self, usercmd_t *cmd, vec3_t pHitloc
 						TIMER_Start( self, "strafeRight", Q_irand( 500, 1500 ) );
 						TIMER_Set( self, "strafeLeft", 0 );
 						evasionType = EVASION_DUCK;
-						evaded = qtrue;
 					}
 					else if ( Q_irand( 0, 1 ) )
 					{
@@ -3152,7 +3163,6 @@ evasionType_t Jedi_SaberBlockGo( gentity_t *self, usercmd_t *cmd, vec3_t pHitloc
 						{
 							TIMER_Start( self, "duck", Q_irand( 500, 1500 ) );
 							evasionType = EVASION_DUCK_PARRY;
-							evaded = qtrue;
 							if ( d_JediAI->integer )
 							{
 								gi.Printf( "duck " );
@@ -3182,7 +3192,6 @@ evasionType_t Jedi_SaberBlockGo( gentity_t *self, usercmd_t *cmd, vec3_t pHitloc
 					gi.Printf( "TOP block\n" );
 				}
 			}
-			evaded = qtrue;
 		}
 		else
 		{
@@ -3191,7 +3200,6 @@ evasionType_t Jedi_SaberBlockGo( gentity_t *self, usercmd_t *cmd, vec3_t pHitloc
 				//duckChance = 2;
 				TIMER_Start( self, "duck", Q_irand( 500, 1500 ) );
 				evasionType = EVASION_DUCK;
-				evaded = qtrue;
 				if ( d_JediAI->integer )
 				{
 					gi.Printf( "duck " );
@@ -3210,7 +3218,6 @@ evasionType_t Jedi_SaberBlockGo( gentity_t *self, usercmd_t *cmd, vec3_t pHitloc
 				//duckChance = 2;
 				TIMER_Start( self, "duck", Q_irand( 500, 1500 ) );
 				evasionType = EVASION_DUCK;
-				evaded = qtrue;
 				if ( d_JediAI->integer )
 				{
 					gi.Printf( "duck " );
@@ -3300,7 +3307,6 @@ evasionType_t Jedi_SaberBlockGo( gentity_t *self, usercmd_t *cmd, vec3_t pHitloc
 					gi.Printf( "mid-TOP block\n" );
 				}
 			}
-			evaded = qtrue;
 		}
 	}
 	else
@@ -3311,7 +3317,6 @@ evasionType_t Jedi_SaberBlockGo( gentity_t *self, usercmd_t *cmd, vec3_t pHitloc
 			{//already in air, duck to pull up legs
 				TIMER_Start( self, "duck", Q_irand( 500, 1500 ) );
 				evasionType = EVASION_DUCK;
-				evaded = qtrue;
 				if ( d_JediAI->integer )
 				{
 					gi.Printf( "legs up\n" );
@@ -3337,7 +3342,6 @@ evasionType_t Jedi_SaberBlockGo( gentity_t *self, usercmd_t *cmd, vec3_t pHitloc
 							gi.Printf( "LL block\n" );
 						}
 					}
-					evaded = qtrue;
 				}
 			}
 			else 
@@ -3354,7 +3358,6 @@ evasionType_t Jedi_SaberBlockGo( gentity_t *self, usercmd_t *cmd, vec3_t pHitloc
 					{
 						self->client->ps.forceJumpCharge = 320;//FIXME: calc this intelligently
 						evasionType = EVASION_FJUMP;
-						evaded = qtrue;
 						if ( d_JediAI->integer )
 						{
 							gi.Printf( "force jump + " );
@@ -3399,7 +3402,6 @@ evasionType_t Jedi_SaberBlockGo( gentity_t *self, usercmd_t *cmd, vec3_t pHitloc
 							}
 						}
 						evasionType = EVASION_JUMP;
-						evaded = qtrue;
 						if ( d_JediAI->integer )
 						{
 							gi.Printf( "jump + " );
@@ -3452,7 +3454,6 @@ evasionType_t Jedi_SaberBlockGo( gentity_t *self, usercmd_t *cmd, vec3_t pHitloc
 								}
 								cmd->upmove = 0;
 								saberBusy = qtrue;
-								evaded = qtrue;
 							}
 						}
 					}
@@ -3464,7 +3465,6 @@ evasionType_t Jedi_SaberBlockGo( gentity_t *self, usercmd_t *cmd, vec3_t pHitloc
 						G_StartMatrixEffect( self );
 					}
 					saberBusy = qtrue;
-					evaded = qtrue;
 				}
 				else if ( incoming || !saberBusy )
 				{
@@ -3501,7 +3501,6 @@ evasionType_t Jedi_SaberBlockGo( gentity_t *self, usercmd_t *cmd, vec3_t pHitloc
 							gi.Printf( "LL block\n" );
 						}
 					}
-					evaded = qtrue;
 				}
 			}
 		}
@@ -3571,7 +3570,6 @@ evasionType_t Jedi_SaberBlockGo( gentity_t *self, usercmd_t *cmd, vec3_t pHitloc
 						}
 					}
 				}
-				evaded = qtrue;
 			}
 		}
 	}
@@ -3833,7 +3831,6 @@ static evasionType_t Jedi_CheckEvadeSpecialAttacks( void )
 	return EVASION_NONE;
 }
 
-extern float ShortestLineSegBewteen2LineSegs( vec3_t start1, vec3_t end1, vec3_t start2, vec3_t end2, vec3_t close_pnt1, vec3_t close_pnt2 );
 extern int WPDEBUG_SaberColor( saber_colors_t saberColor );
 static qboolean Jedi_SaberBlock( void )
 {
@@ -6825,7 +6822,8 @@ static void Jedi_Attack( void )
 			}
 		}
 	}
-	if ( NPC->enemy->NPC  
+	else if ( NPC->enemy &&
+		NPC->enemy->NPC  
 		&& NPC->enemy->NPC->charmedTime > level.time )
 	{//my enemy was charmed
 		if ( OnSameTeam( NPC, NPC->enemy ) )
@@ -6961,8 +6959,10 @@ static void Jedi_Attack( void )
 					{
 					case 0:
 						chance = 9;
+						break;
 					case 1:
 						chance = 3;
+						break;
 					case 2:
 						chance = 1;
 						break;

@@ -1,3 +1,21 @@
+/*
+This file is part of Jedi Knight 2.
+
+    Jedi Knight 2 is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Knight 2 is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Knight 2.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 //B_local.h
 //re-added by MCG
 #ifndef __B_LOCAL_H__
@@ -6,7 +24,7 @@
 #include "g_local.h"
 #include "say.h"
 
-#include "AI.h"
+#include "ai.h"
 
 #define	AI_TIMERS 0//turn on to see print-outs of AI/nav timing
 //
@@ -314,7 +332,7 @@ extern qboolean NPC_FacePosition( vec3_t position, qboolean doPitch = qtrue );
 extern qboolean NPC_FaceEntity( gentity_t *ent, qboolean doPitch = qtrue );
 extern qboolean NPC_FaceEnemy( qboolean doPitch = qtrue );
 
-extern BYTE G_AddBoltOn( gentity_t *NPC, const char *boltOnName );
+extern unsigned char G_AddBoltOn( gentity_t *NPC, const char *boltOnName );
 
 //Skill level cvar
 extern cvar_t	*g_spskill;

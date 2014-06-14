@@ -1,3 +1,5 @@
+#pragma once
+
 ////////////////////////////////////////////////////////////////////////////////////////
 // RAVEN STANDARD TEMPLATE LIBRARY
 //  (c) 2002 Activision
@@ -5,8 +7,8 @@
 //
 // Bit Field
 // ---------
-// The bits class is a bit field of any length which supports all the 
-// standard bitwize operations in addition to some operators for adding & removing 
+// The bits class is a bit field of any length which supports all the
+// standard bitwize operations in addition to some operators for adding & removing
 // individual bits by their integer indicies and a string conversion method.
 //
 //
@@ -17,19 +19,16 @@
 //
 //
 ////////////////////////////////////////////////////////////////////////////////////////
-#if !defined(RATL_BITS_INC)
-#define RATL_BITS_INC
 
 
 ////////////////////////////////////////////////////////////////////////////////////////
 // Includes
 ////////////////////////////////////////////////////////////////////////////////////////
-#if !defined(RATL_COMMON_INC)
-	#include "ratl_common.h"
-#endif
+#include "ratl_common.h"
+
 namespace ratl
 {
-	
+
 ////////////////////////////////////////////////////////////////////////////////////////
 // The Bit Field Class
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -41,17 +40,17 @@ class bits_vs : public bits_base<SZ>
     ////////////////////////////////////////////////////////////////////////////////////
     void	clear_trailing_bits()
 	{
-		for (int i=SIZE; i<ARRAY_SIZE*BITS_INT_SIZE; i++)
+		for (int i=this->SIZE; i<this->ARRAY_SIZE*this->BITS_INT_SIZE; i++)
 		{
-			mV[i>>BITS_SHIFT] &= ~(1<<(i&BITS_AND));
+			this->mV[i>>this->BITS_SHIFT] &= ~(1<<(i&this->BITS_AND));
 		}
 	}
-	
+
 public:
     ////////////////////////////////////////////////////////////////////////////////////
 	// Capacity Enum
     ////////////////////////////////////////////////////////////////////////////////////
-	enum	
+	enum
 	{
 		SIZE			= SZ,
 		CAPACITY		= SZ,
@@ -68,7 +67,7 @@ public:
 	////////////////////////////////////////////////////////////////////////////////////
 	bits_vs(const bits_vs &B)
 	{
-		mem::cpy(mV, B.mV,BYTE_SIZE);
+		mem::cpy(this->mV, B.mV,this->BYTE_SIZE);
 	}
 
 	////////////////////////////////////////////////////////////////////////////////////
@@ -76,7 +75,7 @@ public:
 	////////////////////////////////////////////////////////////////////////////////////
 	bits_vs(const char* Str)
 	{
-		clear();
+		this->clear();
 
 		for (int b=0; b<SIZE; b++)
 		{
@@ -86,7 +85,7 @@ public:
 			}
 			if (Str[b]=='1')
 			{
-				set_bit(b);		// Found A True Bit
+				this->set_bit(b);		// Found A True Bit
 			}
 		}
 	}
@@ -96,9 +95,9 @@ public:
 	////////////////////////////////////////////////////////////////////////////////////////
 	bool		empty() const
 	{
-		for (int i=0; i<ARRAY_SIZE; i++)
+		for (int i=0; i<this->ARRAY_SIZE; i++)
 		{
-			if (mV[i])
+			if (this->mV[i])
 			{
 				return false;
 			}
@@ -112,16 +111,16 @@ public:
 	int			size()	const
 	{
 		return SIZE;
-	}	
+	}
 
 	////////////////////////////////////////////////////////////////////////////////////////
 	// Execute A Bitwise Flip On All The Bits
 	////////////////////////////////////////////////////////////////////////////////////////
 	void		invert()
 	{
-		for (int i=0; i<ARRAY_SIZE; i++)
+		for (int i=0; i<this->ARRAY_SIZE; i++)
 		{
-			mV[i] = ~mV[i];
+			this->mV[i] = ~this->mV[i];
 		}
 		clear_trailing_bits();
 	}
@@ -135,16 +134,16 @@ public:
 	}
 
 	////////////////////////////////////////////////////////////////////////////////////////
-	// Query 
+	// Query
 	////////////////////////////////////////////////////////////////////////////////////////
 	bool		get_bit(const int i) const
 	{
-		// If you hit this assert, then you are trying 
+		// If you hit this assert, then you are trying
 		// to query a bit that goes beyond the number
 		// of bits this object can hold.
 		//--------------------------------------------
 		assert(i>=0 && i < SIZE);
-		return ( (mV[i>>BITS_SHIFT] & (1<<(i&BITS_AND)))!=0 );
+		return ( (this->mV[i>>this->BITS_SHIFT] & (1<<(i&this->BITS_AND)))!=0 );
 	}
 
 	////////////////////////////////////////////////////////////////////////////////////////
@@ -160,7 +159,7 @@ public:
 	////////////////////////////////////////////////////////////////////////////////////////
 	bool		operator==(const bits_vs &B) const
 	{
-		return (mem::eql(mV, B.mV,BYTE_SIZE));
+		return (mem::eql(this->mV, B.mV,this->BYTE_SIZE));
 	}
 
 	////////////////////////////////////////////////////////////////////////////////////////
@@ -176,9 +175,9 @@ public:
 	////////////////////////////////////////////////////////////////////////////////////////
 	void		operator|=(const bits_vs &B)
 	{
-		for (int i=0; i<ARRAY_SIZE; i++)
+		for (int i=0; i<this->ARRAY_SIZE; i++)
 		{
-			mV[i] |= B.mV[i];
+			this->mV[i] |= B.mV[i];
 		}
 	}
 
@@ -187,9 +186,9 @@ public:
 	////////////////////////////////////////////////////////////////////////////////////////
 	void		operator&=(const bits_vs &B)
 	{
-		for (int i=0; i<ARRAY_SIZE; i++)
+		for (int i=0; i<this->ARRAY_SIZE; i++)
 		{
-			mV[i] &= B.mV[i];
+			this->mV[i] &= B.mV[i];
 		}
 	}
 
@@ -198,9 +197,9 @@ public:
 	////////////////////////////////////////////////////////////////////////////////////////
 	void		operator^=(const bits_vs &B)
 	{
-		for (int i=0; i<ARRAY_SIZE; i++)
+		for (int i=0; i<this->ARRAY_SIZE; i++)
 		{
-			mV[i] ^= B.mV[i];
+			this->mV[i] ^= B.mV[i];
 		}
 	}
 
@@ -209,10 +208,9 @@ public:
 	////////////////////////////////////////////////////////////////////////////////////////
 	void		operator=(const bits_vs &B)
 	{
-		mem::cpy(mV, B.mV,BYTE_SIZE);
+		mem::cpy(this->mV, B.mV,this->BYTE_SIZE);
 	}
 
 };
 
 }
-#endif

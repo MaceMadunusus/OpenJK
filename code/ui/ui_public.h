@@ -1,3 +1,21 @@
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 #ifndef __UI_PUBLIC_H__
 #define __UI_PUBLIC_H__
 
@@ -74,11 +92,6 @@ typedef struct {
 	// force a screen update, only used during gamestate load
 	void		(*UpdateScreen)( void );
 
-	// stuff for savegame screenshots...
-#ifdef _XBOX
-	void		(*PrecacheScreenshot)( void );
-#endif
-
 	//========= model collision ===============
 
 	// R_LerpTag is only valid for md3 models
@@ -114,7 +127,7 @@ typedef struct {
 	int			(*Key_GetCatcher)( void );
 	void		(*Key_SetCatcher)( int catcher );
 
-#ifndef __NO_JK2
+#ifdef JK2_MODE
 	qboolean	(*SP_Register)( const char *Package, unsigned char Registration );
 	const char *(*SP_GetStringText)(unsigned short ID);
 	const char *(*SP_GetStringTextString)(const char *Reference);

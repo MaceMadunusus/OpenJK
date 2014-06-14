@@ -1,7 +1,6 @@
-// Sequence Header File
+#pragma once
 
-#ifndef __SEQUENCE__
-#define __SEQUENCE__
+// Sequence Header File
 
 #include "blockstream.h"
 #include "interface.h"
@@ -56,7 +55,7 @@ public:
 	void SetReturn ( CSequence *sequence );
 
 	int GetNumCommands( void )	const	{	return m_numCommands;	}
-	int GetNumChildren( void )	const	{	return m_children.size();	}
+	int GetNumChildren( void )	const	{	return (int)m_children.size();	}
 
 	CSequence *GetChildByIndex( int id );
 	bool HasChild( CSequence *sequence );
@@ -94,5 +93,3 @@ protected:
 	int						m_id;
 	int						m_numCommands;
 };
-
-#endif	//__SEQUENCE__

@@ -1,8 +1,27 @@
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 #ifndef __Q3_INTERFACE__
 #define __Q3_INTERFACE__
 
-#include "../Icarus/IcarusInterface.h"
-
+#include "../icarus/IcarusInterface.h"
+#include "bg_public.h"
+#include "g_shared.h"
 //NOTENOTE: The enums and tables in this file will obviously bitch if they are included multiple times, don't do that
 
 typedef enum //# setType_e
@@ -633,13 +652,10 @@ public:
 	void	DebugPrint( e_DebugPrintLevel, const char *, ... );
 	unsigned int GetTime( void );							//Gets the current time
 	//DWORD	GetTimeScale(void );
-	int 	PlaySound( int taskID, int entID, const char *name, const char *channel );	
+	int 	PlayIcarusSound( int taskID, int entID, const char *name, const char *channel );	
 	void	Lerp2Pos( int taskID, int entID, vec3_t origin, vec3_t angles, float duration );
-	//void	Lerp2Origin( int taskID, int entID, vec3_t origin, float duration );
 	void	Lerp2Angles( int taskID, int entID, vec3_t angles, float duration );
 	int		GetTag( int entID, const char *name, int lookup, vec3_t info );
-	//void	Lerp2Start( int taskID, int entID, float duration );
-	//void	Lerp2End( int taskID, int entID, float duration );
 	void	Set( int taskID, int entID, const char *type_name, const char *data );
 	void	Use( int entID, const char *name );
 	void	Activate( int entID, const char *name );
@@ -673,8 +689,8 @@ public:
 	void	FreeVariable( const char *name );
 
 	//Save / Load functions
-	int		WriteSaveData( unsigned long chid, void *data, int length );
-	int		ReadSaveData( unsigned long chid, void *address, int length, void **addressptr = NULL );
+	int		WriteSaveData( unsigned int chid, void *data, int length );
+	int		ReadSaveData( unsigned int chid, void *address, int length, void **addressptr = NULL );
 	int		LinkGame( int entID, int icarusID );
 	
 	// Access functions

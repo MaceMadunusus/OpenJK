@@ -1,23 +1,46 @@
+/*
+This file is part of Jedi Knight 2.
+
+    Jedi Knight 2 is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Knight 2 is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Knight 2.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 // Sequencer Header File
 
 #ifndef __SEQUENCER__
 #define __SEQUENCER__
 
-#include "BlockStream.h"
-#include "Interface.h"
-#include "TaskManager.h"
-#include "Sequence.h"
+#include "blockstream.h"
+#include "interface.h"
+#include "taskmanager.h"
+#include "sequence.h"
 
-#pragma warning(disable : 4786)	//identifier was truncated 
+#ifdef _MSC_VER
+	#pragma warning(disable : 4786)	//identifier was truncated 
 
-#pragma warning (push, 3)	//go back down to 3 for the stl include
-#pragma warning (disable:4503)	// decorated name length xceeded, name was truncated
+	#pragma warning (push, 3)	//go back down to 3 for the stl include
+	#pragma warning (disable:4503)	// decorated name length xceeded, name was truncated
+#endif
 #include <list>
 #include <vector>
 #include <map>
 #include <algorithm>
-#pragma warning (pop)
-#pragma warning (disable:4503)	// decorated name length xceeded, name was truncated
+#ifdef _MSC_VER
+	#pragma warning (pop)
+	#pragma warning (disable:4503)	// decorated name length xceeded, name was truncated
+#endif
+
 using namespace std;
 
 //Defines
@@ -135,8 +158,6 @@ protected:
 	void Prep( CBlock ** );
 
 	int Prime( CTaskManager *taskManager, CBlock *command );
-
-	void StripExtension( const char *in, char *out );
 
 	int ParseRun( CBlock *block );
 	int ParseLoop( CBlock *block, bstream_t *bstream );

@@ -1,3 +1,21 @@
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2002-2013 Activision
+
 ////////////////////////////////////////////////////////////////////////////////////////
 // RAVEN STANDARD USEFUL FUNCTION LIBRARY
 //  (c) 2002 Activision
@@ -13,12 +31,16 @@
 ////////////////////////////////////////////////////////////////////////////////////////
 // Includes
 ////////////////////////////////////////////////////////////////////////////////////////
+#include "../qcommon/q_shared.h"
+#ifndef _WIN32
+#define Pool FilePool
+#endif
 #include "hfile.h"
 #if !defined(RATL_HANDLE_POOL_VS_INC)
-	#include "..\Ratl\handle_pool_vs.h"
+	#include "../Ratl/handle_pool_vs.h"
 #endif
 #if !defined(RATL_VECTOR_VS_INC)
-	#include "..\Ratl\vector_vs.h"
+	#include "../Ratl/vector_vs.h"
 #endif
 #if !defined(RUFL_HSTRING_INC)
 	#include "hstring.h"
@@ -48,11 +70,7 @@ extern bool	HFILEclose(int& handle);
 ////////////////////////////////////////////////////////////////////////////////////////
 struct SOpenFile
 {
-#ifdef _XBOX
-	dllNamespace::hstring mPath;
-#else
 	hstring			mPath;
-#endif
 	bool			mForRead;
 	int				mHandle;
 	float			mVersion;

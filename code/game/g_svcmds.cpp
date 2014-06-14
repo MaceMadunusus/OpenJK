@@ -1,12 +1,27 @@
-// leave this line at the top for all g_xxxx.cpp files...
-#include "g_headers.h"
+/*
+This file is part of Jedi Academy.
 
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
 
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
+#include "../cgame/cg_local.h"
 #include "Q3_Interface.h"
 
 #include "g_local.h"
 #include "wp_saber.h"
+#include "g_functions.h"
 
 extern void G_NextTestAxes( void );
 extern void G_ChangePlayerModel( gentity_t *ent, const char *newModel );
@@ -15,7 +30,7 @@ extern void Q3_SetViewEntity(int entID, const char *name);
 extern qboolean G_ClearViewEntity( gentity_t *ent );
 extern void G_Knockdown( gentity_t *self, gentity_t *attacker, const vec3_t pushDir, float strength, qboolean breakSaberLock );
 
-extern void WP_SetSaber( gentity_t *ent, int saberNum, char *saberName );
+extern void WP_SetSaber( gentity_t *ent, int saberNum, const char *saberName );
 extern void WP_RemoveSaber( gentity_t *ent, int saberNum );
 extern saber_colors_t TranslateSaberColor( const char *name );
 extern qboolean WP_SaberBladeUseSecondBladeStyle( saberInfo_t *saber, int bladeNum );
@@ -45,8 +60,8 @@ void	Svcmd_EntityList_f (void) {
 	int			e;
 	gentity_t		*check;
 
-	check = g_entities+1;
-	for (e = 1; e < globals.num_entities ; e++, check++) {
+	check = g_entities;
+	for (e = 0; e < globals.num_entities ; e++, check++) {
 		if ( !check->inuse ) {
 			continue;
 		}
@@ -174,8 +189,20 @@ gentity_t *G_GetSelfForPlayerCmd( void )
 
 static void Svcmd_Saber_f()
 {
-	char *saber = gi.argv(1);
-	char *saber2 = gi.argv(2);
+	const char *saber = gi.argv(1);
+	const char *saber2 = gi.argv(2);
+	char name[MAX_CVAR_VALUE_STRING] = {0};
+
+	if ( gi.argc() < 2 )
+	{
+		gi.Printf( "Usage: saber <saber1> <saber2>\n" );
+		gi.Cvar_VariableStringBuffer( "g_saber", name, sizeof(name) );
+		gi.Printf("g_saber is set to %s\n", name);
+		gi.Cvar_VariableStringBuffer( "g_saber2", name, sizeof(name) );
+		if ( name[0] )
+			gi.Printf("g_saber2 is set to %s\n", name);
+		return;
+	}
 
 	if ( !g_entities[0].client || !saber || !saber[0] )
 	{
@@ -238,7 +265,7 @@ static void Svcmd_SaberBlade_f()
 static void Svcmd_SaberColor_f()
 {//FIXME: just list the colors, each additional listing sets that blade
 	int saberNum = atoi(gi.argv(1));
-	char *color[MAX_BLADES];
+	const char *color[MAX_BLADES];
 	int bladeNum;
 
 	for ( bladeNum = 0; bladeNum < MAX_BLADES; bladeNum++ )
@@ -291,7 +318,7 @@ static void Svcmd_ForceJump_f( void )
 		gi.SendServerCommand( 0, "print \"Cheats are not enabled on this server.\n\"");
 		return;
 	}
-	char *newVal = gi.argv(1);
+	const char *newVal = gi.argv(1);
 	if ( !VALIDSTRING( newVal ) )
 	{
 		gi.Printf( "Current forceJump level is %d\n", g_entities[0].client->ps.forcePowerLevel[FP_LEVITATION] );
@@ -329,7 +356,7 @@ static void Svcmd_SaberThrow_f( void )
 		gi.SendServerCommand( 0, "print \"Cheats are not enabled on this server.\n\"");
 		return;
 	}
-	char *newVal = gi.argv(1);
+	const char *newVal = gi.argv(1);
 	if ( !VALIDSTRING( newVal ) )
 	{
 		gi.Printf( "Current saberThrow level is %d\n", g_entities[0].client->ps.forcePowerLevel[FP_SABERTHROW] );
@@ -367,7 +394,7 @@ static void Svcmd_ForceHeal_f( void )
 		gi.SendServerCommand( 0, "print \"Cheats are not enabled on this server.\n\"");
 		return;
 	}
-	char *newVal = gi.argv(1);
+	const char *newVal = gi.argv(1);
 	if ( !VALIDSTRING( newVal ) )
 	{
 		gi.Printf( "Current forceHeal level is %d\n", g_entities[0].client->ps.forcePowerLevel[FP_HEAL] );
@@ -405,7 +432,7 @@ static void Svcmd_ForcePush_f( void )
 		gi.SendServerCommand( 0, "print \"Cheats are not enabled on this server.\n\"");
 		return;
 	}
-	char *newVal = gi.argv(1);
+	const char *newVal = gi.argv(1);
 	if ( !VALIDSTRING( newVal ) )
 	{
 		gi.Printf( "Current forcePush level is %d\n", g_entities[0].client->ps.forcePowerLevel[FP_PUSH] );
@@ -443,7 +470,7 @@ static void Svcmd_ForcePull_f( void )
 		gi.SendServerCommand( 0, "print \"Cheats are not enabled on this server.\n\"");
 		return;
 	}
-	char *newVal = gi.argv(1);
+	const char *newVal = gi.argv(1);
 	if ( !VALIDSTRING( newVal ) )
 	{
 		gi.Printf( "Current forcePull level is %d\n", g_entities[0].client->ps.forcePowerLevel[FP_PULL] );
@@ -481,7 +508,7 @@ static void Svcmd_ForceSpeed_f( void )
 		gi.SendServerCommand( 0, "print \"Cheats are not enabled on this server.\n\"");
 		return;
 	}
-	char *newVal = gi.argv(1);
+	const char *newVal = gi.argv(1);
 	if ( !VALIDSTRING( newVal ) )
 	{
 		gi.Printf( "Current forceSpeed level is %d\n", g_entities[0].client->ps.forcePowerLevel[FP_SPEED] );
@@ -519,7 +546,7 @@ static void Svcmd_ForceGrip_f( void )
 		gi.SendServerCommand( 0, "print \"Cheats are not enabled on this server.\n\"");
 		return;
 	}
-	char *newVal = gi.argv(1);
+	const char *newVal = gi.argv(1);
 	if ( !VALIDSTRING( newVal ) )
 	{
 		gi.Printf( "Current forceGrip level is %d\n", g_entities[0].client->ps.forcePowerLevel[FP_GRIP] );
@@ -557,7 +584,7 @@ static void Svcmd_ForceLightning_f( void )
 		gi.SendServerCommand( 0, "print \"Cheats are not enabled on this server.\n\"");
 		return;
 	}
-	char *newVal = gi.argv(1);
+	const char *newVal = gi.argv(1);
 	if ( !VALIDSTRING( newVal ) )
 	{
 		gi.Printf( "Current forceLightning level is %d\n", g_entities[0].client->ps.forcePowerLevel[FP_LIGHTNING] );
@@ -595,7 +622,7 @@ static void Svcmd_MindTrick_f( void )
 		gi.SendServerCommand( 0, "print \"Cheats are not enabled on this server.\n\"");
 		return;
 	}
-	char *newVal = gi.argv(1);
+	const char *newVal = gi.argv(1);
 	if ( !VALIDSTRING( newVal ) )
 	{
 		gi.Printf( "Current mindTrick level is %d\n", g_entities[0].client->ps.forcePowerLevel[FP_TELEPATHY] );
@@ -633,7 +660,7 @@ static void Svcmd_SaberDefense_f( void )
 		gi.SendServerCommand( 0, "print \"Cheats are not enabled on this server.\n\"");
 		return;
 	}
-	char *newVal = gi.argv(1);
+	const char *newVal = gi.argv(1);
 	if ( !VALIDSTRING( newVal ) )
 	{
 		gi.Printf( "Current saberDefense level is %d\n", g_entities[0].client->ps.forcePowerLevel[FP_SABER_DEFENSE] );
@@ -671,7 +698,7 @@ static void Svcmd_SaberOffense_f( void )
 		gi.SendServerCommand( 0, "print \"Cheats are not enabled on this server.\n\"");
 		return;
 	}
-	char *newVal = gi.argv(1);
+	const char *newVal = gi.argv(1);
 	if ( !VALIDSTRING( newVal ) )
 	{
 		gi.Printf( "Current saberOffense level is %d\n", g_entities[0].client->ps.forcePowerLevel[FP_SABER_OFFENSE] );
@@ -709,7 +736,7 @@ static void Svcmd_ForceSetLevel_f( int forcePower )
 		gi.SendServerCommand( 0, "print \"Cheats are not enabled on this server.\n\"");
 		return;
 	}
-	char *newVal = gi.argv(1);
+	const char *newVal = gi.argv(1);
 	if ( !VALIDSTRING( newVal ) )
 	{
 		gi.Printf( "Current force level is %d\n", g_entities[0].client->ps.forcePowerLevel[forcePower] );
@@ -980,7 +1007,7 @@ qboolean G_ReleaseEntity( gentity_t *grabber )
 	return qfalse;
 }
 
-void G_GrabEntity( gentity_t *grabber, char *target )
+void G_GrabEntity( gentity_t *grabber, const char *target )
 {
 	if ( !grabber || !grabber->client )
 	{
@@ -1003,7 +1030,7 @@ ConsoleCommand
 =================
 */
 qboolean	ConsoleCommand( void ) {
-	char	*cmd;
+	const char	*cmd;
 
 	cmd = gi.argv(0);
 
@@ -1028,7 +1055,7 @@ qboolean	ConsoleCommand( void ) {
 		if ( !g_cheats->integer ) 
 		{
 			gi.SendServerCommand( 0, "print \"Cheats are not enabled on this server.\n\"");
-			return qfalse;
+			return qtrue;
 		}
 		Svcmd_Nav_f ();
 		return qtrue;
@@ -1039,7 +1066,7 @@ qboolean	ConsoleCommand( void ) {
 		if ( !g_cheats->integer ) 
 		{
 			gi.SendServerCommand( 0, "print \"Cheats are not enabled on this server.\n\"");
-			return qfalse;
+			return qtrue;
 		}
 		Svcmd_NPC_f ();
 		return qtrue;
@@ -1050,7 +1077,7 @@ qboolean	ConsoleCommand( void ) {
 		if ( !g_cheats->integer ) 
 		{
 			gi.SendServerCommand( 0, "print \"Cheats are not enabled on this server.\n\"");
-			return qfalse;
+			return qtrue;
 		}
 		Svcmd_Use_f ();
 		return qtrue;
@@ -1061,7 +1088,7 @@ qboolean	ConsoleCommand( void ) {
 		if ( !g_cheats->integer ) 
 		{
 			gi.SendServerCommand( 0, "print \"Cheats are not enabled on this server.\n\"");
-			return qfalse;
+			return qtrue;
 		}
 
 		Quake3Game()->Svcmd();
@@ -1074,7 +1101,7 @@ qboolean	ConsoleCommand( void ) {
 		if ( !g_cheats->integer ) 
 		{
 			gi.SendServerCommand( 0, "print \"Cheats are not enabled on this server.\n\"");
-			return qfalse;
+			return qtrue;
 		}
 		Svcmd_SaberColor_f();
 		return qtrue;
@@ -1085,7 +1112,7 @@ qboolean	ConsoleCommand( void ) {
 		if ( !g_cheats->integer ) 
 		{
 			gi.SendServerCommand( 0, "print \"Cheats are not enabled on this server.\n\"");
-			return qfalse;
+			return qtrue;
 		}
 		Svcmd_Saber_f();
 		return qtrue;
@@ -1096,7 +1123,7 @@ qboolean	ConsoleCommand( void ) {
 		if ( !g_cheats->integer ) 
 		{
 			gi.SendServerCommand( 0, "print \"Cheats are not enabled on this server.\n\"");
-			return qfalse;
+			return qtrue;
 		}
 		Svcmd_SaberBlade_f();
 		return qtrue;
@@ -1185,6 +1212,12 @@ qboolean	ConsoleCommand( void ) {
 	}
 	if ( Q_stricmp( cmd, "setForceAll" ) == 0 )	
 	{
+		if ( !g_cheats->integer ) 
+		{
+			gi.SendServerCommand( 0, "print \"Cheats are not enabled on this server.\n\"");
+			return qtrue;
+		}
+
 		Svcmd_ForceJump_f();
 		Svcmd_SaberThrow_f();
 		Svcmd_ForceHeal_f();
@@ -1207,6 +1240,23 @@ qboolean	ConsoleCommand( void ) {
 		}
 		return qtrue;
 	}
+	if ( Q_stricmp( cmd, "setSaberAll" ) == 0 )	
+	{
+		if ( !g_cheats->integer ) 
+		{
+			gi.SendServerCommand( 0, "print \"Cheats are not enabled on this server.\n\"");
+			return qtrue;
+		}
+
+		Svcmd_SaberThrow_f();
+		Svcmd_SaberDefense_f();
+		Svcmd_SaberOffense_f();
+		for ( int i = SS_NONE+1; i < SS_NUM_SABER_STYLES; i++ )
+		{
+			g_entities[0].client->ps.saberStylesKnown |= (1<<i);
+		}
+		return qtrue;
+	}
 	if ( Q_stricmp( cmd, "saberAttackCycle" ) == 0 )	
 	{
 		Svcmd_SaberAttackCycle_f();
@@ -1217,13 +1267,13 @@ qboolean	ConsoleCommand( void ) {
 		if ( !g_cheats->integer ) 
 		{
 			gi.SendServerCommand( 0, "print \"Cheats are not enabled on this server.\n\"");
-			return qfalse;
+			return qtrue;
 		}
-		char *cmd2 = gi.argv(1);
+		const char *cmd2 = gi.argv(1);
 
 		if ( cmd2 && cmd2[0] )
 		{
-			char *cmd3 = gi.argv(2);
+			const char *cmd3 = gi.argv(2);
 			if ( cmd3 && cmd3[0] )
 			{
 				gentity_t *found = NULL;
@@ -1255,9 +1305,9 @@ qboolean	ConsoleCommand( void ) {
 		if ( !g_cheats->integer ) 
 		{
 			gi.SendServerCommand( 0, "print \"Cheats are not enabled on this server.\n\"");
-			return qfalse;
+			return qtrue;
 		}
-		char	*cmd2 = gi.argv(1);
+		const char	*cmd2 = gi.argv(1);
 		int		n;
 
 		if ( !*cmd2 || !cmd2[0] )
@@ -1274,7 +1324,7 @@ qboolean	ConsoleCommand( void ) {
 			team_t	team;
 
 			team = (team_t)GetIDForString( TeamTable, cmd2 );
-			if ( team == -1 )
+			if ( team == (team_t)-1 )
 			{
 				gi.Printf( S_COLOR_RED"'playerteam' unrecognized team name %s!\n", cmd2 );
 				gi.Printf( S_COLOR_RED"Valid team names are:\n");
@@ -1297,9 +1347,9 @@ qboolean	ConsoleCommand( void ) {
 		if ( !g_cheats->integer ) 
 		{
 			gi.SendServerCommand( 0, "print \"Cheats are not enabled on this server.\n\"");
-			return qfalse;
+			return qtrue;
 		}
-		char	*cmd2 = gi.argv(1);
+		const char	*cmd2 = gi.argv(1);
 		if ( !*cmd2 || !cmd2[0] )
 		{
 			if ( !G_ClearViewEntity( &g_entities[0] ) )
@@ -1319,9 +1369,9 @@ qboolean	ConsoleCommand( void ) {
 		if ( !g_cheats->integer ) 
 		{
 			gi.SendServerCommand( 0, "print \"Cheats are not enabled on this server.\n\"");
-			return qfalse;
+			return qtrue;
 		}
-		char	*cmd2 = gi.argv(1);
+		const char	*cmd2 = gi.argv(1);
 		if ( !*cmd2 || !cmd2[0] )
 		{
 			if ( !G_ReleaseEntity( &g_entities[0] ) )
@@ -1341,7 +1391,7 @@ qboolean	ConsoleCommand( void ) {
 		if ( !g_cheats->integer ) 
 		{
 			gi.SendServerCommand( 0, "print \"Cheats are not enabled on this server.\n\"");
-			return qfalse;
+			return qtrue;
 		}
 		G_Knockdown( &g_entities[0], &g_entities[0], vec3_origin, 300, qtrue );
 		return qtrue;
@@ -1401,6 +1451,12 @@ qboolean	ConsoleCommand( void ) {
 	
 	if (Q_stricmp (cmd, "iknowkungfu") == 0)
 	{
+		if ( !g_cheats->integer ) 
+		{
+			gi.SendServerCommand( 0, "print \"Cheats are not enabled on this server.\n\"");
+			return qtrue;
+		}
+
 		gi.cvar_set( "g_debugMelee", "1" );
 		G_SetWeapon( &g_entities[0], WP_MELEE );
 		for ( int i = FP_FIRST; i < NUM_FORCE_POWERS; i++ )

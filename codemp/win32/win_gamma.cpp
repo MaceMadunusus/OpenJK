@@ -1,11 +1,8 @@
-//Anything above this #include will be ignored by the compiler
-#include "qcommon/exe_headers.h"
-
 /*
 ** WIN_GAMMA.C
 */
 #include <assert.h>
-#include "renderer/tr_local.h"
+#include "tr_local.h"
 #include "qcommon/qcommon.h"
 #include "glw_win.h"
 #include "win_local.h"
@@ -117,7 +114,7 @@ void GLimp_SetGamma( unsigned char red[256], unsigned char green[256], unsigned 
 	vinfo.dwOSVersionInfoSize = sizeof(vinfo);
 	GetVersionEx( &vinfo );
 	if ( vinfo.dwMajorVersion >= 5 && vinfo.dwPlatformId == VER_PLATFORM_WIN32_NT ) {
-		Com_DPrintf( "performing gamma clamp.\n" );
+		ri->Printf( PRINT_DEVELOPER, "performing gamma clamp.\n" );
 		for ( j = 0 ; j < 3 ; j++ ) {
 			for ( i = 0 ; i < 128 ; i++ ) {
 				if ( table[j][i] > ( (128+i) << 8 ) ) {
@@ -129,7 +126,7 @@ void GLimp_SetGamma( unsigned char red[256], unsigned char green[256], unsigned 
 			}
 		}
 	} else {
-		Com_DPrintf( "skipping gamma clamp.\n" );
+		ri->Printf( PRINT_DEVELOPER, "skipping gamma clamp.\n" );
 	}
 
 	// enforce constantly increasing
@@ -155,7 +152,7 @@ void WG_RestoreGamma( void )
 	if ( glConfig.deviceSupportsGamma )
 	{
 		HDC hDC;
-		
+
 		hDC = GetDC( GetDesktopWindow() );
 		SetDeviceGammaRamp( hDC, s_oldHardwareGamma );
 		ReleaseDC( GetDesktopWindow(), hDC );

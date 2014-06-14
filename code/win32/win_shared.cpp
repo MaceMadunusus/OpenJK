@@ -1,13 +1,100 @@
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 // leave this as first line for PCH reasons...
 //
 #include "../server/exe_headers.h"
 
+#include <ShlObj.h>
 
-
-
-#include "../game/q_shared.h"
+#include "../qcommon/q_shared.h"
 #include "../qcommon/qcommon.h"
 #include "win_local.h"
+
+// Used to determine where to store user-specific files
+static char homePath[ MAX_OSPATH ] = { 0 };
+
+static char binaryPath[ MAX_OSPATH ] = { 0 };
+static char installPath[ MAX_OSPATH ] = { 0 };
+
+/*
+=================
+Sys_SetBinaryPath
+=================
+*/
+void Sys_SetBinaryPath(const char *path)
+{
+	Q_strncpyz(binaryPath, path, sizeof(binaryPath));
+}
+
+/*
+=================
+Sys_BinaryPath
+=================
+*/
+char *Sys_BinaryPath(void)
+{
+	return binaryPath;
+}
+
+/*
+=================
+Sys_SetDefaultInstallPath
+=================
+*/
+void Sys_SetDefaultInstallPath(const char *path)
+{
+	Q_strncpyz(installPath, path, sizeof(installPath));
+}
+
+/*
+=================
+Sys_DefaultInstallPath
+=================
+*/
+char *Sys_DefaultInstallPath(void)
+{
+	if (*installPath)
+		return installPath;
+	else
+		return Sys_Cwd();
+}
+
+/*
+==============
+Sys_Dirname
+==============
+*/
+const char *Sys_Dirname( char *path )
+{
+	static char dir[ MAX_OSPATH ] = { 0 };
+	int length;
+
+	Q_strncpyz( dir, path, sizeof( dir ) );
+	length = strlen( dir ) - 1;
+
+	while( length > 0 && dir[ length ] != '\\' )
+		length--;
+
+	dir[ length ] = '\0';
+
+	return dir;
+}
 
 /*
 ================
@@ -24,258 +111,72 @@ int Sys_Milliseconds (void)
 	return sys_curtime;
 }
 
-/*
-** --------------------------------------------------------------------------------
-**
-** PROCESSOR STUFF
-**
-** --------------------------------------------------------------------------------
-*/
-static inline void CPUID( int func, unsigned int regs[4] )
-{
-	unsigned regEAX, regEBX, regECX, regEDX;
-
-	__asm mov eax, func
-	__asm __emit 00fh
-	__asm __emit 0a2h
-	__asm mov regEAX, eax
-	__asm mov regEBX, ebx
-	__asm mov regECX, ecx
-	__asm mov regEDX, edx
-
-	regs[0] = regEAX;
-	regs[1] = regEBX;
-	regs[2] = regECX;
-	regs[3] = regEDX;
-}
-
-static int IsPentium( void )
-{
-	__asm 
-	{
-		pushfd						// save eflags
-		pop		eax
-		test	eax, 0x00200000		// check ID bit
-		jz		set21				// bit 21 is not set, so jump to set_21
-		and		eax, 0xffdfffff		// clear bit 21
-		push	eax					// save new value in register
-		popfd						// store new value in flags
-		pushfd
-		pop		eax
-		test	eax, 0x00200000		// check ID bit
-		jz		good
-		jmp		err					// cpuid not supported
-set21:
-		or		eax, 0x00200000		// set ID bit
-		push	eax					// store new value
-		popfd						// store new value in EFLAGS
-		pushfd
-		pop		eax
-		test	eax, 0x00200000		// if bit 21 is on
-		jnz		good
-		jmp		err
-	}
-
-err:
-	return qfalse;
-good:
-	return qtrue;
-}
-
-static int Is3DNOW( void )
-{
-	unsigned regs[4];
-	char pstring[16];
-	char processorString[13];
-
-	// get name of processor
-	CPUID( 0, ( unsigned int * ) pstring );
-	processorString[0] = pstring[4];
-	processorString[1] = pstring[5];
-	processorString[2] = pstring[6];
-	processorString[3] = pstring[7];
-	processorString[4] = pstring[12];
-	processorString[5] = pstring[13];
-	processorString[6] = pstring[14];
-	processorString[7] = pstring[15];
-	processorString[8] = pstring[8];
-	processorString[9] = pstring[9];
-	processorString[10] = pstring[10];
-	processorString[11] = pstring[11];
-	processorString[12] = 0;
-
-//  REMOVED because you can have 3DNow! on non-AMD systems
-//	if ( strcmp( processorString, "AuthenticAMD" ) )
-//		return qfalse;
-
-	// check AMD-specific functions
-	CPUID( 0x80000000, regs );
-	if ( regs[0] < 0x80000000 )
-		return qfalse;
-
-	// bit 31 of EDX denotes 3DNOW! support
-	CPUID( 0x80000001, regs );
-	if ( regs[3] & ( 1 << 31 ) )
-		return qtrue;
-
-	return qfalse;
-}
-
-static int IsKNI( void )
-{
-	unsigned regs[4];
-
-	// get CPU feature bits
-	CPUID( 1, regs );
-
-	// bit 25 of EDX denotes KNI existence
-	if ( regs[3] & ( 1 << 25 ) )
-	{
-		// Ok, CPU supports this instruction, but does the OS?
-		//
-		// Test a KNI instruction and make sure you don't get an exception...
-		//
-		__try
-		{
-			__asm
-			{
-				pushad;
-			//	orps xmm1,xmm1;		// Below are the op codes for this instruction
-									// emits will compile w/ MSVC 5.0 compiler
-									// You can comment these out and uncomment the
-									// orps when using the Intel Compiler
-				__emit 0x0f
-				__emit 0x56
-				__emit 0xc9
-				popad;
-			}
-		}// If OS creates an exception, it doesn't support Pentium III Instructions
-		__except(EXCEPTION_EXECUTE_HANDLER)
-		{
-			return qfalse;
-		}
-
-		return qtrue;
-	}
-
-	return qfalse;
-}
-
-static int IsWIL( void )
-{
-	unsigned regs[4];
-
-	// get CPU feature bits
-	CPUID( 1, regs );
-
-	// bit 26 of EDX denotes WIL existence
-	if ( regs[3] & ( 1 << 26 ) )
-	{
-		// Ok, CPU supports this instruction, but does the OS?
-		//
-		// Test a WIL instruction and make sure you don't get an exception...
-		//
-		__try
-		{
-			__asm
-			{
-				pushad;
-			// 	xorpd xmm0,xmm0;  // Willamette New Instructions 
-					__emit 0x0f
-					__emit 0x56
-					__emit 0xc9
-				popad;
-			}
-		}// If OS creates an exception, it doesn't support PentiumIV Instructions
-		__except(EXCEPTION_EXECUTE_HANDLER)
-		{
-//			if(_exception_code()==STATUS_ILLEGAL_INSTRUCTION)	// forget it, any exception should count as fail for safety
-				return qfalse; // Willamette New Instructions not supported
-		}
-
-		return qtrue;	// Williamette/P4 instructions available
-	}
-
-	return qfalse;
-
-}
-
-
-static int IsMMX( void )
-{
-	unsigned int regs[4];
-
-	// get CPU feature bits
-	CPUID( 1, regs );
-
-	// bit 23 of EDX denotes MMX existence
-	if ( regs[3] & ( 1 << 23 ) )
-		return qtrue;
-	return qfalse;
-}
-
-int Sys_GetProcessorId( void )
-{
-#if defined _M_ALPHA
-	return CPUID_AXP;
-#elif !defined _M_IX86
-	return CPUID_GENERIC;
-#else
-
-	// verify we're at least a Pentium or 486 w/ CPUID support
-	if ( !IsPentium() )
-		return CPUID_INTEL_UNSUPPORTED;
-
-	// check for MMX
-	if ( !IsMMX() )
-	{
-		// Pentium or PPro
-		return CPUID_INTEL_PENTIUM;
-	}
-
-	// see if we're an AMD 3DNOW! processor
-	if ( Is3DNOW() )
-	{
-		return CPUID_AMD_3DNOW;
-	}
-
-	// see if we're an Intel Katmai
-	if ( IsKNI() )
-	{
-		// if we are, see if we're a Williamette as well...
-		//
-		if ( IsWIL() )
-		{
-			return CPUID_INTEL_WILLIAMETTE;
-		}
-		return CPUID_INTEL_KATMAI;
-	}
-
-	// by default we're functionally a vanilla Pentium/MMX or P2/MMX
-	return CPUID_INTEL_MMX;
-
-#endif
-}
-
-//============================================
-
 char *Sys_GetCurrentUser( void )
 {
-#ifdef _XBOX
-	return NULL;
-#else
 	static char s_userName[1024];
 	unsigned long size = sizeof( s_userName );
 
 
 	if ( !GetUserName( s_userName, &size ) )
-		strcpy( s_userName, "player" );
+		Q_strncpyz( s_userName, "player", 1024 );
 
 	if ( !s_userName[0] )
 	{
-		strcpy( s_userName, "player" );
+		Q_strncpyz( s_userName, "player", 1024 );
 	}
 
 	return s_userName;
+}
+
+/*
+==============
+Sys_DefaultHomePath
+==============
+*/
+char	*Sys_DefaultHomePath(void) {
+#ifdef _PORTABLE_VERSION
+	Com_Printf("Portable install requested, skipping homepath support\n");
+	return NULL;
+#else
+	typedef HRESULT (__stdcall * GETFOLDERPATH)(HWND, int, HANDLE, DWORD, LPSTR); 
+
+	TCHAR szPath[MAX_PATH];
+	GETFOLDERPATH qSHGetFolderPath;
+	HMODULE shfolder = LoadLibrary("shfolder.dll");
+
+	if(shfolder == NULL)
+	{
+		Com_Printf("Unable to load SHFolder.dll\n");
+		return NULL;
+	}
+
+	if(!*homePath && com_homepath)
+	{
+		qSHGetFolderPath = (GETFOLDERPATH)GetProcAddress(shfolder, "SHGetFolderPathA");
+		if(qSHGetFolderPath == NULL)
+		{
+			Com_Printf("Unable to find SHGetFolderPath in SHFolder.dll\n");
+			FreeLibrary(shfolder);
+			return NULL;
+		}
+
+		if( !SUCCEEDED( qSHGetFolderPath( NULL, CSIDL_PERSONAL,
+						NULL, 0, szPath ) ) )
+		{
+			Com_Printf("Unable to detect CSIDL_PERSONAL\n");
+			FreeLibrary(shfolder);
+			return NULL;
+		}
+		
+		Com_sprintf(homePath, sizeof(homePath), "%s%cMy Games%c", szPath, PATH_SEP, PATH_SEP);
+
+		if(com_homepath->string[0])
+			Q_strcat(homePath, sizeof(homePath), com_homepath->string);
+		else
+			Q_strcat(homePath, sizeof(homePath), HOMEPATH_NAME_WIN);
+	}
+
+	FreeLibrary(shfolder);
+	return homePath;
 #endif
 }

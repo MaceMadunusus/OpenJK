@@ -1,14 +1,30 @@
+/*
+This file is part of Jedi Knight 2.
 
-// this line must stay at top so the whole PCH thing works...
-#include "cg_headers.h"
+    Jedi Knight 2 is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
 
+    Jedi Knight 2 is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Knight 2.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
+#include "cg_local.h"
+#include "../game/g_local.h"
+#include "../game/b_local.h"
 #define	CG_PLAYERS_CPP
-//#include "cg_local.h"
 #include "cg_media.h"
 #include "FxScheduler.h"
-#include "..\game\ghoul2_shared.h"
-#include "..\game\anims.h"
-#include "..\game\wp_saber.h"
+#include "../game/ghoul2_shared.h"
+#include "../game/anims.h"
+#include "../game/wp_saber.h"
 
 #define	LOOK_SWING_SCALE	0.5
 
@@ -641,7 +657,7 @@ void ParseAnimationSndBlock(const char *asb_filename, animsounds_t *animSounds, 
 		{
 			break;
 		}		
-		strcpy(soundString, token);
+		Q_strncpyz(soundString, token, sizeof(soundString));
 
 		//get lowest value
 		token = COM_Parse( text_p );
@@ -769,6 +785,7 @@ void CG_ParseAnimationSndFile( const char *as_filename, int animFileIndex )
 	}
 	if ( len >= sizeof( text ) - 1 ) 
 	{
+		cgi_FS_FCloseFile( f );
 		CG_Printf( "File %s too long\n", sfilename );
 		return;
 	}
@@ -783,6 +800,7 @@ void CG_ParseAnimationSndFile( const char *as_filename, int animFileIndex )
 	lower_i =0;
 
 	// read information for batches of sounds (UPPER or LOWER)
+	COM_BeginParseSession();
 	while ( 1 ) 
 	{
 		// Get base frame of sequence
@@ -802,6 +820,7 @@ void CG_ParseAnimationSndFile( const char *as_filename, int animFileIndex )
 			ParseAnimationSndBlock( as_filename, legsAnimSnds, animations, &lower_i, &text_p ); 
 		}
 	}
+	COM_EndParseSession(  );
 }
 /*
 ===============
@@ -1000,13 +1019,10 @@ CG_PlayerAnimation
 void CG_PlayerAnimation( centity_t *cent, int *legsOld, int *legs, float *legsBackLerp,
 						int *torsoOld, int *torso, float *torsoBackLerp ) {
 	clientInfo_t	*ci;
-	int				clientNum;
 	int				legsAnim;
 	int				legsTurnAnim = -1;
 	qboolean		newLegsFrame = qfalse;
 	qboolean		newTorsoFrame = qfalse;
-
-	clientNum = cent->currentState.clientNum;
 
 	if ( cg_noPlayerAnims.integer ) {
 		*legsOld = *legs = *torsoOld = *torso = 0;
@@ -1131,7 +1147,7 @@ void CG_PlayerAnimSounds( int animFileIndex, qboolean torso, int oldFrame, int f
 			if ( cg_reliableAnimSounds.integer > 1 )
 			{//more precise, slower
 				oldAnim = PM_LegsAnimForFrame( &g_entities[entNum], oldFrame );
-				anim = PM_TorsoAnimForFrame( &g_entities[entNum], frame );
+				anim = PM_LegsAnimForFrame( &g_entities[entNum], frame );
 			}
 			else
 			{//less precise, but faster
@@ -2860,33 +2876,6 @@ void CG_PlayerPowerups( centity_t *cent )
 	}*/
 }
 
-/*
-
-/*
-===============
-CG_GetTeamFromUserinfo
-
-Return team value based on client userinfo
-===============
-*/
-int CG_GetTeamFromUserinfo( int clientNum ) {
-	const char *info, *teamString;
-
-	info = CG_ConfigString( CS_PLAYERS + clientNum );
-	teamString = Info_ValueForKey( info, "t" );
-
-	/*if ( !strcmp( teamString, "s" ) )
-		return TEAM_SPECTATOR;
-
-	if ( !strcmp( teamString, "r" ) ) 
-		return TEAM_RED;
-
-	if ( !strcmp( teamString, "b" ) )
-		return TEAM_BLUE;*/
-
-	return TEAM_FREE;
-}
-
 #define	SHADOW_DISTANCE		128
 static qboolean _PlayerShadow( const vec3_t origin, const float orientation, float *const shadowPlane, const float radius ) {
 	vec3_t		end, mins = {-7, -7, 0}, maxs = {7, 7, 2};
@@ -2900,7 +2889,7 @@ static qboolean _PlayerShadow( const vec3_t origin, const float orientation, flo
 	cgi_CM_BoxTrace( &trace, origin, end, mins, maxs, 0, MASK_PLAYERSOLID );
 
 	// no shadow if too high
-	if ( trace.fraction == 1.0 ) {
+	if ( trace.fraction == 1.0 || (trace.startsolid && trace.allsolid) ) {
 		return qfalse;
 	}
 
@@ -3389,6 +3378,8 @@ static void CG_ForceElectrocution( centity_t *cent, const vec3_t origin, vec3_t 
 				break;
 			case CLASS_ATST:
 				fxOrg[2] += 120;
+				break;
+			default:
 				break;
 			}
 		}
@@ -4430,7 +4421,7 @@ void CG_CheckSaberInWater( centity_t *cent, centity_t *scent, int modelIndex, ve
 void CG_AddSaberBlade( centity_t *cent, centity_t *scent, refEntity_t *saber, int renderfx, int modelIndex, vec3_t origin, vec3_t angles)
 {
 	vec3_t	org_, end,//org_future, 
-			axis_[3] = {0,0,0, 0,0,0, 0,0,0};//, axis_future[3]={0,0,0, 0,0,0, 0,0,0};	// shut the compiler up
+			axis_[3] = {{0,0,0}, {0,0,0}, {0,0,0}};//, axis_future[3]={{0,0,0}, {0,0,0}, {0,0,0}};	// shut the compiler up
 	trace_t	trace;
 	float	length;
 
@@ -4608,8 +4599,6 @@ Ghoul2 Insert End
 					{
 						// if we impact next frame, we'll mark a slash mark
 						client->saberTrail.haveOldPos[i] = qtrue;
-						CG_ImpactMark( cgs.media.rivetMarkShader, client->saberTrail.oldPos[i], client->saberTrail.oldNormal[i],
-								0.0f, 1.0f, 1.0f, 1.0f, 1.0f, qfalse, 1.1f, qfalse );
 					}
 				}
 
@@ -4636,8 +4625,8 @@ Ghoul2 Insert End
 					// Hmmm, no impact this frame, but we have an old point
 					// Let's put the mark there, we should use an endcap mark to close the line, but we 
 					//	can probably just get away with a round mark
-					CG_ImpactMark( cgs.media.rivetMarkShader, client->saberTrail.oldPos[i], client->saberTrail.oldNormal[i],
-							0.0f, 1.0f, 1.0f, 1.0f, 1.0f, qfalse, 1.1f, qfalse );
+					//CG_ImpactMark( cgs.media.rivetMarkShader, client->saberTrail.oldPos[i], client->saberTrail.oldNormal[i],
+					//		0.0f, 1.0f, 1.0f, 1.0f, 1.0f, qfalse, 1.1f, qfalse );
 				}
 
 				// we aren't impacting, so turn off our mark tracking mechanism
@@ -4810,7 +4799,6 @@ void CG_Player( centity_t *cent ) {
 	clientInfo_t	*ci;
 	qboolean		shadow, staticScale = qfalse;
 	float			shadowPlane;
-	entityState_t	*ent;
 	const weaponData_t  *wData = NULL;
 
 	calcedMp = qfalse;
@@ -4819,8 +4807,6 @@ void CG_Player( centity_t *cent ) {
 	{
 		return;
 	}
-
-	ent = &cent->currentState;
 
 	//FIXME: make sure this thing has a gent and client
 	if(!cent->gent)

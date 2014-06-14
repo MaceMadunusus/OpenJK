@@ -1,8 +1,22 @@
-#include "g_headers.h"
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 #include "b_local.h"
-//#include "g_nav.h"
-//#include "anims.h"
-//#include "wp_saber.h"
 extern qboolean PM_FlippingAnim( int anim );
 extern void NPC_BSST_Patrol( void );
 
@@ -52,7 +66,6 @@ void RT_FireDecide( void )
 	qboolean enemyCS = qfalse;
 	qboolean enemyInFOV = qfalse;
 	//qboolean move = qtrue;
-	qboolean faceEnemy = qfalse;
 	qboolean shoot = qfalse;
 	qboolean hitAlly = qfalse;
 	vec3_t	impactPos;
@@ -150,21 +163,15 @@ void RT_FireDecide( void )
 		else if ( gi.inPVS( NPC->enemy->currentOrigin, NPC->currentOrigin ) )
 		{
 			NPCInfo->enemyLastSeenTime = level.time;
-			faceEnemy = qtrue;
 			//NPC_AimAdjust( -1 );//adjust aim worse longer we cannot see enemy
 		}
 
 		if ( NPC->client->ps.weapon == WP_NONE )
 		{
-			faceEnemy = qfalse;
 			shoot = qfalse;
 		}
 		else
 		{
-			if ( enemyLOS )
-			{//FIXME: no need to face enemy if we're moving to some other goal and he's too far away to shoot?
-				faceEnemy = qtrue;
-			}
 			if ( enemyCS )
 			{
 				shoot = qtrue;
@@ -279,7 +286,6 @@ void RT_FireDecide( void )
 							NPCInfo->desiredPitch	= angles[PITCH];
 
 							shoot = qtrue;
-							faceEnemy = qfalse;
 						}
 					}
 				}
@@ -358,8 +364,11 @@ void RT_FlyStart( gentity_t *self )
 		self->svFlags |= SVF_CUSTOM_GRAVITY;
 		self->client->moveType = MT_FLYSWIM;
 		//Inform NPC_HandleAIFlags we want to fly
-		self->NPC->aiFlags |= NPCAI_FLY;
-		self->lastInAirTime = level.time;
+		
+		if (self->NPC){
+			self->NPC->aiFlags |= NPCAI_FLY;
+			self->lastInAirTime = level.time;
+		}
 		
 		//start jet effect
 		self->client->jetPackTime = Q3_INFINITE;

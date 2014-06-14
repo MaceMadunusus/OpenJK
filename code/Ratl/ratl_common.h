@@ -1,3 +1,21 @@
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2002-2013 Activision
+
 ////////////////////////////////////////////////////////////////////////////////////////
 // RAVEN STANDARD TEMPLATE LIBRARY
 //  (c) 2002 Activision
@@ -55,6 +73,7 @@
 	#pragma warning ( disable : 4512 )			// unable to generate default operator=
 	#pragma warning ( disable : 4130 )			// logical operation on address of string constant
 	#pragma warning ( disable : 4127 )			// conditional expression is constant
+	#pragma warning ( disable : 4996 )			// This function or variable may be unsafe.
 #endif
 
 
@@ -190,7 +209,7 @@ namespace	mem
 
 namespace str
 {
-	inline int		len(const char *src)
+	inline size_t		len(const char *src)
 	{
 		return strlen(src);
 	}
@@ -200,7 +219,7 @@ namespace str
 		strcpy(dest,src);
 	}
 
-	inline void	ncpy(char *dest,const char *src,int destBufferLen)
+	inline void	ncpy(char *dest,const char *src,size_t destBufferLen)
 	{
 		strncpy(dest,src,destBufferLen);
 	}
@@ -210,7 +229,7 @@ namespace str
 		strcat(dest,src);
 	}
 
-	inline void	ncat(char *dest,const char *src,int destBufferLen)
+	inline void	ncat(char *dest,const char *src,size_t destBufferLen)
 	{
 		ncpy(dest+len(dest),src,destBufferLen-len(dest));
 	}
@@ -225,19 +244,19 @@ namespace str
 	}
 	inline int		icmp(const char *s1,const char *s2)
 	{
-		return stricmp(s1,s2);
+		return Q_stricmp(s1,s2);
 	}
 	inline int		cmpi(const char *s1,const char *s2)
 	{
-		return stricmp(s1,s2);
+		return Q_stricmp(s1,s2);
 	}
 	inline bool	ieql(const char *s1,const char *s2)
 	{
-		return !stricmp(s1,s2);
+		return !Q_stricmp(s1,s2);
 	}
 	inline bool	eqli(const char *s1,const char *s2)
 	{
-		return !stricmp(s1,s2);
+		return !Q_stricmp(s1,s2);
 	}
 
 	inline char	*tok(char *s,const char *gap)
@@ -280,7 +299,7 @@ public:
 	{
 		return 1;
 	}
-#endif;
+#endif
 };
 
 
@@ -300,15 +319,13 @@ public:
 class	ratl_base
 {
 public:
-#ifndef _XBOX
 	void	save(hfile& file);
 	void	load(hfile& file);
-#endif
 
 	void	ProfilePrint(const char * format, ...);
 
 public:
-	static	void*	OutputPrint;
+	static	void (*OutputPrint)(const char *);
 };
 
 
@@ -333,11 +350,8 @@ protected:
 	////////////////////////////////////////////////////////////////////////////////////
 	unsigned int						mV[ARRAY_SIZE];
 public:
-	enum	
-	{
-		SIZE			= SZ,
-		CAPACITY		= SZ,
-	};
+	static const int SIZE			= SZ;
+	static const int CAPACITY		= SZ;
 
 	bits_base(bool init=true,bool initValue=false)
 	{
@@ -508,10 +522,7 @@ namespace storage
 	template<class T,int SIZE>
 	struct value_semantics
 	{
-		enum	
-		{
-			CAPACITY		= SIZE,
-		};
+		static const int CAPACITY		= SIZE;
 		typedef T TAlign;		// this is any type that has the right alignment
 		typedef T TValue;		// this is the actual thing the user uses
 		typedef T TStorage;		// this is what we make our array of
@@ -578,10 +589,7 @@ namespace storage
 	template<class T,int SIZE>
 	struct object_semantics
 	{
-		enum	
-		{
-			CAPACITY		= SIZE,
-		};
+		static const int CAPACITY		= SIZE;
 		typedef mem::alignStruct TAlign;		// this is any type that has the right alignment
 		typedef T TValue;				// this is the actual thing the user uses
 
@@ -593,12 +601,9 @@ namespace storage
 		};
 		typedef TStorage TArray[SIZE];
 
-		enum 
-		{
-			NEEDS_CONSTRUCT=1,
-			TOTAL_SIZE=sizeof(TStorage),
-			VALUE_SIZE=sizeof(TStorage),
-		};
+		static const int NEEDS_CONSTRUCT=1;
+		static const int TOTAL_SIZE=sizeof(TStorage);
+		static const int VALUE_SIZE=sizeof(TStorage);
 
 		static void construct(TStorage *me)
 		{
@@ -646,10 +651,7 @@ namespace storage
 	template<class T,int SIZE,int MAX_CLASS_SIZE>
 	struct virtual_semantics
 	{
-		enum	
-		{
-			CAPACITY		= SIZE,
-		};
+		static const int CAPACITY		= SIZE;
 		typedef mem::alignStruct TAlign;		// this is any type that has the right alignment
 		typedef T TValue;				// this is the actual thing the user uses
 
@@ -714,9 +716,6 @@ namespace storage
 			assert(dynamic_cast<const T *>(p));
 			T *ptr=p; // if this doesn't compile, you are trying to alloc something that is not derived from base
 			assert(dynamic_cast<const CAST_TO *>(ptr));
-			int i=VALUE_SIZE;
-			int k=MAX_CLASS_SIZE;
-			int j=sizeof(CAST_TO);
 			compile_assert<sizeof(CAST_TO)<=MAX_CLASS_SIZE>();
 			assert(sizeof(CAST_TO)<=MAX_CLASS_SIZE);
 #endif
@@ -729,10 +728,7 @@ namespace storage
 	template<class T,int SIZE,class NODE>
 	struct value_semantics_node
 	{
-		enum	
-		{
-			CAPACITY		= SIZE,
-		};
+		static const int CAPACITY		= SIZE;
 		struct SNode
 		{
 			NODE	nodeData;
@@ -787,11 +783,11 @@ namespace storage
 		// this is so node support does not need to be added to the primitive containers
 		static NODE & node(TValue &v)
 		{
-			return *(NODE *)((unsigned char *)(&v)+int(&((TStorage *)0)->nodeData)-int(&((TStorage *)0)->value));
+			return *(NODE *)((unsigned char *)(&v)+intptr_t(&((TStorage *)0)->nodeData)-intptr_t(&((TStorage *)0)->value));
 		}
 		static const NODE & node(const TValue &v)
 		{
-			return *(const NODE *)((unsigned char *)(&v)+int(&((TStorage *)0)->nodeData)-int(&((TStorage *)0)->value));
+			return *(const NODE *)((unsigned char *)(&v)+intptr_t(&((TStorage *)0)->nodeData)-intptr_t(&((TStorage *)0)->value));
 		}
 		static void swap(TStorage *s1,TStorage *s2)
 		{
@@ -809,10 +805,7 @@ namespace storage
 	template<class T,int SIZE,class NODE>
 	struct object_semantics_node
 	{
-		enum	
-		{
-			CAPACITY		= SIZE,
-		};
+		static const int CAPACITY		= SIZE;
 		typedef mem::alignStruct TAlign;		// this is any type that has the right alignment
 		typedef T			TValue;		// this is the actual thing the user uses
 
@@ -905,10 +898,7 @@ namespace storage
 	template<class T,int SIZE,int MAX_CLASS_SIZE,class NODE>
 	struct virtual_semantics_node
 	{
-		enum	
-		{
-			CAPACITY		= SIZE,
-		};
+		static const int CAPACITY		= SIZE;
 		typedef mem::alignStruct TAlign;		// this is any type that has the right alignment
 		typedef T TValue;				// this is the actual thing the user uses
 
@@ -1000,9 +990,6 @@ namespace storage
 			assert(dynamic_cast<const T *>(p));
 			T *ptr=p; // if this doesn't compile, you are trying to alloc something that is not derived from base
 			assert(dynamic_cast<const CAST_TO *>(ptr));
-			int i=VALUE_SIZE;
-			int k=MAX_CLASS_SIZE;
-			int j=sizeof(CAST_TO);
 			compile_assert<sizeof(CAST_TO)<=MAX_CLASS_SIZE>();
 			assert(sizeof(CAST_TO)<=MAX_CLASS_SIZE);
 #endif
@@ -1022,15 +1009,16 @@ public:
     ////////////////////////////////////////////////////////////////////////////////////
 	// Capacity Enum
     ////////////////////////////////////////////////////////////////////////////////////
- 	enum 
-	{
-		CAPACITY	= T::CAPACITY,
-		SIZE		= T::CAPACITY,
-	};
+	static const int CAPACITY	= T::CAPACITY;
+	static const int SIZE		= T::CAPACITY;
 	////////////////////////////////////////////////////////////////////////////////////
 	// Data
 	////////////////////////////////////////////////////////////////////////////////////
+#ifdef _WIN32
 	typedef typename T					TStorageTraits;
+#else
+    typedef T                           TStorageTraits;
+#endif
 	typedef typename T::TArray			TTArray;
 	typedef typename T::TValue			TTValue;
 	typedef typename T::TConstructed	TTConstructed;

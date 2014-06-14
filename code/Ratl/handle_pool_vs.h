@@ -1,3 +1,21 @@
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2002-2013 Activision
+
 ////////////////////////////////////////////////////////////////////////////////////////
 // RAVEN STANDARD TEMPLATE LIBRARY
 //  (c) 2002 Activision
@@ -42,15 +60,16 @@ template <class T>
 class handle_pool_base : public pool_root<T>
 {
 public:
+#ifdef _WIN32
 	typedef typename T TStorageTraits;
+#else
+    typedef T TStorageTraits;
+#endif
 	typedef typename T::TValue TTValue;
  	////////////////////////////////////////////////////////////////////////////////////
 	// Capacity Enum
     ////////////////////////////////////////////////////////////////////////////////////
- 	enum 
-	{
-		CAPACITY		= T::CAPACITY
-	};
+	static const int CAPACITY		= T::CAPACITY;
 
 private:
 	int							mHandles[CAPACITY];
@@ -121,7 +140,7 @@ public:
 	const TTValue&	operator[](int handle) const 									
 	{
 		assert(is_used(handle));		//typically this is a stale handle (already been freed)
-		return value_at_index(handle&mMASK_HANDLE_TO_INDEX);
+		return pool_root<T>::value_at_index(handle&mMASK_HANDLE_TO_INDEX);
 	}
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -130,14 +149,14 @@ public:
 	TTValue&			operator[](int i)											
 	{
 		assert(is_used(i));		//typically this is a stale handle (already been freed)
-		return value_at_index(i&mMASK_HANDLE_TO_INDEX);
+		return pool_root<T>::value_at_index(i&mMASK_HANDLE_TO_INDEX);
 	}
 
 	bool				is_used(int i) const
 	{
 		if (mHandles[i&mMASK_HANDLE_TO_INDEX]==i)
 		{
-			return is_used_index(i&mMASK_HANDLE_TO_INDEX);
+			return pool_root<T>::is_used_index(i&mMASK_HANDLE_TO_INDEX);
 		}
 		return false;
 	}
@@ -157,7 +176,7 @@ public:
     ////////////////////////////////////////////////////////////////////////////////////
 	int			alloc()
 	{
-		int index=alloc_index();
+		int index=pool_root<T>::alloc_index();
 		return	mHandles[index];
 	}
 
@@ -166,7 +185,7 @@ public:
     ////////////////////////////////////////////////////////////////////////////////////
 	int			alloc(const TTValue &v)
 	{
-		int index=alloc_index(v);
+		int index=pool_root<T>::alloc_index(v);
 		return	mHandles[index];
 	}
     ////////////////////////////////////////////////////////////////////////////////////
@@ -209,7 +228,7 @@ public:
     ////////////////////////////////////////////////////////////////////////////////////
 	int			index_to_handle(int index) const
 	{
-		assert(index>=0 && index<CAPACITY && is_used_index(index)); //disallowing this on stale handles
+		assert(index>=0 && index<CAPACITY && pool_root<T>::is_used_index(index)); //disallowing this on stale handles
 		return (mHandles[index]);
 	}
 
@@ -218,32 +237,38 @@ public:
     ////////////////////////////////////////////////////////////////////////////////////
 	int			pointer_to_handle(const TTValue *me) const 
 	{
-		return index_to_handle(pointer_to_index(me));
+		return index_to_handle(pool_root<T>::pointer_to_index(me));
 	}
 	////////////////////////////////////////////////////////////////////////////////////
 	// converts a T pointer to a handle, generally not something you need, cannot check for stale handles
     ////////////////////////////////////////////////////////////////////////////////////
 	int			pointer_to_handle(const TRatlNew *me) const 
 	{
-		return index_to_handle(pointer_to_index(me));
+		return index_to_handle(pool_root<T>::pointer_to_index(me));
 	}
 
     ////////////////////////////////////////////////////////////////////////////////////
 	// Get An Iterator To The Object At handle
     ////////////////////////////////////////////////////////////////////////////////////
+#ifndef _WIN32
+    typename
+#endif
 	pool_root<T>::iterator	at(int handle)
 	{
 		assert(is_used(handle));
-		return at_index(handle&mMASK_HANDLE_TO_INDEX);
+		return pool_root<T>::at_index(handle&mMASK_HANDLE_TO_INDEX);
 	}
 
     ////////////////////////////////////////////////////////////////////////////////////
 	// Get An Iterator To The Object At handle
     ////////////////////////////////////////////////////////////////////////////////////
+#ifndef _WIN32
+    typename
+#endif
 	pool_root<T>::const_iterator	at(int handle) const
 	{
 		assert(is_used(handle));
-		return at_index(handle&mMASK_HANDLE_TO_INDEX);
+		return pool_root<T>::at_index(handle&mMASK_HANDLE_TO_INDEX);
 	}
 };
 
@@ -253,10 +278,7 @@ class handle_pool_vs : public handle_pool_base<storage::value_semantics<T,ARG_CA
 public:
 	typedef typename storage::value_semantics<T,ARG_CAPACITY> TStorageTraits;
 	typedef typename TStorageTraits::TValue TTValue;
- 	enum 
-	{
-		CAPACITY		= ARG_CAPACITY
-	};
+	static const int CAPACITY		= ARG_CAPACITY;
 	handle_pool_vs() {}
 };
 
@@ -266,10 +288,7 @@ class handle_pool_os : public handle_pool_base<storage::object_semantics<T,ARG_C
 public:
 	typedef typename storage::object_semantics<T,ARG_CAPACITY> TStorageTraits;
 	typedef typename TStorageTraits::TValue TTValue;
- 	enum 
-	{
-		CAPACITY		= ARG_CAPACITY
-	};
+	static const int CAPACITY		= ARG_CAPACITY;
 	handle_pool_os() {}
 };
 
@@ -279,11 +298,8 @@ class handle_pool_is : public handle_pool_base<storage::virtual_semantics<T,ARG_
 public:
 	typedef typename storage::virtual_semantics<T,ARG_CAPACITY,ARG_MAX_CLASS_SIZE> TStorageTraits;
 	typedef typename TStorageTraits::TValue TTValue;
- 	enum 
-	{
-		CAPACITY		= ARG_CAPACITY,
-		MAX_CLASS_SIZE	= ARG_MAX_CLASS_SIZE
-	};
+	static const int CAPACITY		= ARG_CAPACITY;
+	static const int MAX_CLASS_SIZE	= ARG_MAX_CLASS_SIZE;
 	handle_pool_is() {}
 };
 

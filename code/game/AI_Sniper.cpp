@@ -1,11 +1,26 @@
-// leave this line at the top of all AI_xxxx.cpp files for PCH reasons...
-#include "g_headers.h"
+/*
+This file is part of Jedi Academy.
 
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
 
 #include "b_local.h"
 #include "g_nav.h"
 #include "anims.h"
 #include "g_navigator.h"
+#include "g_functions.h"
 
 extern void CG_DrawAlert( vec3_t origin, float rating );
 extern void G_AddVoiceEvent( gentity_t *self, int event, int speakDebounceTime );
@@ -13,8 +28,6 @@ extern void NPC_TempLookTarget( gentity_t *self, int lookEntNum, int minLookTime
 extern qboolean G_ExpandPointToBBox( vec3_t point, const vec3_t mins, const vec3_t maxs, int ignore, int clipmask );
 extern qboolean FlyingCreature( gentity_t *ent );
 extern void Saboteur_Cloak( gentity_t *self );
-
-//extern	CNavigator	navigator;
 
 #define	SPF_NO_HIDE			2
 
@@ -361,7 +374,7 @@ static void Sniper_CheckMoveState( void )
 		if ( STEER::Reached(NPC, NPCInfo->goalEntity, 16, !!FlyingCreature(NPC)) || 
 			( NPCInfo->squadState == SQUAD_SCOUT && enemyLOS && enemyDist <= 10000 ) )
 		{
-			int	newSquadState = SQUAD_STAND_AND_SHOOT;
+			//int	newSquadState = SQUAD_STAND_AND_SHOOT;
 			//we got where we wanted to go, set timers based on why we were running
 			switch ( NPCInfo->squadState )
 			{
@@ -372,7 +385,7 @@ static void Sniper_CheckMoveState( void )
 				}
 				TIMER_Set( NPC, "duck", (NPC->max_health - NPC->health) * 100 );
 				TIMER_Set( NPC, "hideTime", Q_irand( 3000, 7000 ) );
-				newSquadState = SQUAD_COVER;
+				//newSquadState = SQUAD_COVER;
 				break;
 			case SQUAD_TRANSITION://was heading for a combat point
 				TIMER_Set( NPC, "hideTime", Q_irand( 2000, 4000 ) );

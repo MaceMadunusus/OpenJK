@@ -1,3 +1,21 @@
+/*
+This file is part of Jedi Knight 2.
+
+    Jedi Knight 2 is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Knight 2 is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Knight 2.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 // leave this line at the top for all g_xxxx.cpp files...
 #include "g_headers.h"
 #include <algorithm>
@@ -5,9 +23,6 @@
 #include "b_local.h"
 #include "g_navigator.h"
 #include "g_nav.h"
-#include <time.h>
-
-
 
 extern int NAVNEW_ClearPathBetweenPoints(vec3_t start, vec3_t end, vec3_t mins, vec3_t maxs, int ignore, int clipmask);
 extern qboolean NAV_CheckNodeFailedForEnt( gentity_t *ent, int nodeNum );
@@ -27,22 +42,6 @@ static vec3_t	wpMins = { -16, -16, -24+STEPSIZE };//WTF:  was 16??!!!
 static byte CHECKED_NO = 0;
 static byte CHECKED_FAILED = 1;
 static byte CHECKED_PASSED = 2;
-
-
-int GetTime ( int lastTime )
-{
-	int			curtime;
-	static int	timeBase = 0;
-	static qboolean	initialized = qfalse;
-
-	if (!initialized) {
-		timeBase = timeGetTime();
-		initialized = qtrue;
-	}
-	curtime = timeGetTime() - timeBase - lastTime;
-
-	return curtime;
-}
 
 /*
 -------------------------
@@ -264,7 +263,7 @@ GetEdgeFlags
 -------------------------
 */
 
-BYTE CNode::GetEdgeFlags( int edgeNum )
+unsigned char CNode::GetEdgeFlags( int edgeNum )
 {
 	if ( edgeNum > m_numEdges )
 		return 0;
@@ -570,7 +569,7 @@ bool CNavigator::Load( const char *filename, int checksum )
 	gi.FS_FOpenFile( va( "maps/%s.nav", filename ), &file, FS_READ );
 
 	//See if we succeeded
-	if ( file == NULL )
+	if ( file == NULL_FILE )
 		return false;
 
 	//Check the header id
@@ -632,7 +631,7 @@ bool CNavigator::Save( const char *filename, int checksum )
 	//Attempt to load the file
 	gi.FS_FOpenFile( va( "maps/%s.nav", filename ), &file, FS_WRITE );
 
-	if ( file == NULL )
+	if ( file == NULL_FILE )
 		return false;
 
 	//Write out the header id
@@ -780,10 +779,10 @@ void CNavigator::CalculatePath( CNode *node )
 	int	i;
 
 	CPriorityQueue	*pathList = new CPriorityQueue();
-	BYTE			*checked;
+	unsigned char			*checked;
 
 	//Init the completion table
-	checked = new BYTE[ m_nodes.size() ];
+	checked = new unsigned char[ m_nodes.size() ];
 	memset( checked, 0, m_nodes.size() );
 
 	//Mark this node as checked
@@ -848,7 +847,7 @@ extern void CP_FindCombatPointWaypoints( void );
 void CNavigator::CalculatePaths( bool	recalc )
 {
 #ifndef FINAL_BUILD
-	int	startTime = GetTime(0);
+	int	startTime = gi.Milliseconds();
 #endif
 #if _HARD_CONNECT
 #else
@@ -869,7 +868,7 @@ void CNavigator::CalculatePaths( bool	recalc )
 #ifndef FINAL_BUILD
 	if ( pathsCalculated )
 	{
-		gi.Printf( S_COLOR_CYAN"%s recalced paths in %d ms\n", (NPC!=NULL?NPC->targetname:"NULL"), GetTime(startTime) );
+		gi.Printf( S_COLOR_CYAN"%s recalced paths in %d ms\n", (NPC!=NULL?NPC->targetname:"NULL"), gi.Milliseconds()-startTime );
 	}
 #endif
 	
@@ -967,7 +966,7 @@ void CNavigator::ShowEdges( void )
 			if ( drawMap[(*ni)->GetID()].find( id ) != drawMap[(*ni)->GetID()].end() )
 				continue;
 
-			BYTE flags = (*ni)->GetEdgeFlags( i );
+			unsigned char flags = (*ni)->GetEdgeFlags( i );
 
 			CNode	*node = m_nodes[id];
 

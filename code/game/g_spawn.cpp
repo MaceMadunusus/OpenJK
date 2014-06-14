@@ -1,7 +1,21 @@
-// leave this line at the top for all g_xxxx.cpp files...
-#include "g_headers.h"
+/*
+This file is part of Jedi Academy.
 
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
 
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+#include "../cgame/cg_local.h"
 #include "Q3_Interface.h"
 #include "g_local.h"
 #include "g_functions.h"
@@ -48,7 +62,7 @@ void AddSpawnField(char *field, char *value)
 
 qboolean	G_SpawnField( unsigned int uiField, char **ppKey, char **ppValue )
 {
-	if ( uiField >= numSpawnVars )
+	if ( (int)uiField >= numSpawnVars )
 		return qfalse;
 
 	(*ppKey) = spawnVars[uiField][0];
@@ -155,7 +169,7 @@ stringID_table_t flagTable [] =
 {
 	//"noTED", EF_NO_TED,
 	//stringID_table_t Must end with a null entry
-	"", NULL
+	{ "", 0 }
 };
 
 //
@@ -194,8 +208,8 @@ typedef enum {
 
 typedef struct
 {
-	char	*name;
-	int		ofs;
+	const char	*name;
+	size_t		ofs;
 	fieldtype_t	type;
 	int		flags;
 } field_t;
@@ -353,7 +367,7 @@ field_t fields[] = {
 
 
 typedef struct {
-	char	*name;
+	const char	*name;
 	void	(*spawn)(gentity_t *ent);
 } spawn_t;
 
@@ -482,6 +496,8 @@ void SP_misc_trip_mine( gentity_t *self );
 void SP_PAS( gentity_t *ent );
 void SP_misc_weapon_shooter( gentity_t *self );
 void SP_misc_weather_zone( gentity_t *ent );
+
+void SP_misc_cubemap( gentity_t *ent );
 
 //New spawn functions
 void SP_reference_tag ( gentity_t *ent );
@@ -712,6 +728,8 @@ spawn_t	spawns[] = {
 	{"misc_gas_tank", SP_misc_gas_tank},
 	{"misc_crystal_crate", SP_misc_crystal_crate},
 	{"misc_atst_drivable", SP_misc_atst_drivable},
+
+	{"misc_cubemap", SP_misc_cubemap},
 	
 	{"shooter_rocket", SP_shooter_rocket},
 	{"shooter_grenade", SP_shooter_grenade},
@@ -1191,12 +1209,15 @@ qboolean G_ParseSpawnVars( const char **data ) {
 	numSpawnVarChars = 0;
 
 	// parse the opening brace	
+	COM_BeginParseSession();
 	com_token = COM_Parse( data );
 	if ( !*data ) {
 		// end of spawn string
+		COM_EndParseSession();
 		return qfalse;
 	}
 	if ( com_token[0] != '{' ) {
+		COM_EndParseSession();
 		G_Error( "G_ParseSpawnVars: found %s when expecting {",com_token );
 	}
 
@@ -1208,6 +1229,7 @@ qboolean G_ParseSpawnVars( const char **data ) {
 			break;
 		}
 		if ( !data ) {
+			COM_EndParseSession();
 			G_Error( "G_ParseSpawnVars: EOF without closing brace" );
 		}
 
@@ -1216,12 +1238,15 @@ qboolean G_ParseSpawnVars( const char **data ) {
 		// parse value	
 		com_token = COM_Parse( data );
 		if ( com_token[0] == '}' ) {
+			COM_EndParseSession();
 			G_Error( "G_ParseSpawnVars: closing brace without data" );
 		}
 		if ( !data ) {
+			COM_EndParseSession();
 			G_Error( "G_ParseSpawnVars: EOF without closing brace" );
 		}
 		if ( numSpawnVars == MAX_SPAWN_VARS ) {
+			COM_EndParseSession();
 			G_Error( "G_ParseSpawnVars: MAX_SPAWN_VARS" );
 		}
 		spawnVars[ numSpawnVars ][0] = G_AddSpawnVarToken( keyname );
@@ -1229,10 +1254,11 @@ qboolean G_ParseSpawnVars( const char **data ) {
 		numSpawnVars++;
 	}
 
+	COM_EndParseSession();
 	return qtrue;
 }
 
-static	char *defaultStyles[LS_NUM_STYLES][3] = 
+static	const char *defaultStyles[LS_NUM_STYLES][3] = 
 {
 	{	// 0 normal
 		"z",

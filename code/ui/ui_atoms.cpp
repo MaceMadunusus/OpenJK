@@ -1,3 +1,21 @@
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 /**********************************************************************
 	UI_ATOMS.C
 
@@ -84,7 +102,7 @@ void UI_SetActiveMenu( const char* menuname,const char *menuID )
 		UI_DataPadMenu();
 		return;
 	}
-
+#ifndef JK2_MODE
 	if ( Q_stricmp (menuname, "missionfailed_menu") == 0 ) 
 	{
 		Menus_CloseAll();
@@ -92,17 +110,7 @@ void UI_SetActiveMenu( const char* menuname,const char *menuID )
 		ui.Key_SetCatcher( KEYCATCH_UI );
 		return;
 	}
-//JLF SPLASHMAIN MPSKIPPED
-#ifdef _XBOX
-	{
-		Menus_CloseAll();
-		if (Menus_ActivateByName(menuname))
-			ui.Key_SetCatcher( KEYCATCH_UI );
-		else
-			UI_MainMenu();
-	}
 #endif
-
 }
 
 
@@ -142,18 +150,16 @@ UI_Cache
 */
 static void UI_Cache_f( void ) 
 {
- int index;
 	Menu_Cache();
-
+#ifndef JK2_MODE
 extern const char *lukeForceStatusSounds[];
 extern const char *kyleForceStatusSounds[];
-
-	for (index = 0; index < 5; index++)
+	for (int index = 0; index < 5; index++)
 	{
 		DC->registerSound(lukeForceStatusSounds[index], qfalse);
 		DC->registerSound(kyleForceStatusSounds[index], qfalse);
 	}
-	for (index = 1; index <= 18; index++)
+	for (int index = 1; index <= 18; index++)
 	{
 		DC->registerSound(va("sound/chars/storyinfo/%d",index), qfalse);
 	}
@@ -178,6 +184,7 @@ extern const char *kyleForceStatusSounds[];
 	Menus_ActivateByName("ingameMissionSelect1");
 	Menus_ActivateByName("ingameMissionSelect2");
 	Menus_ActivateByName("ingameMissionSelect3");
+#endif
 }
 
 
@@ -186,7 +193,9 @@ extern const char *kyleForceStatusSounds[];
 UI_ConsoleCommand
 =================
 */
+#ifndef JK2_MODE
 void UI_Load(void);	//in UI_main.cpp
+#endif
 
 qboolean UI_ConsoleCommand( void ) 
 {
@@ -226,11 +235,13 @@ qboolean UI_ConsoleCommand( void )
 		return qtrue;
 	}
 	
+#ifndef JK2_MODE
 	if ( Q_stricmp (cmd, "ui_load") == 0 ) 
 	{
 		UI_Load();
 		return qtrue;
 	}
+#endif
 
 	return qfalse;
 }
@@ -260,6 +271,7 @@ void UI_Init( int apiVersion, uiimport_t *uiimport, qboolean inGameLoad )
 	ui.Cvar_Create( "cg_drawCrosshair", "1", CVAR_ARCHIVE );
 	ui.Cvar_Create( "cg_marks", "1", CVAR_ARCHIVE );
 	ui.Cvar_Create ("s_language",			"english",	CVAR_ARCHIVE | CVAR_NORESTART);
+#ifndef JK2_MODE
 	ui.Cvar_Create( "g_char_model",			"jedi_tf",	CVAR_ARCHIVE|CVAR_SAVEGAME|CVAR_NORESTART );
 	ui.Cvar_Create( "g_char_skin_head",		"head_a1",	CVAR_ARCHIVE|CVAR_SAVEGAME|CVAR_NORESTART );
 	ui.Cvar_Create( "g_char_skin_torso",	"torso_a1",	CVAR_ARCHIVE|CVAR_SAVEGAME|CVAR_NORESTART );
@@ -294,54 +306,12 @@ void UI_Init( int apiVersion, uiimport_t *uiimport, qboolean inGameLoad )
 	ui.Cvar_Create( "cg_bobroll", "0.002", CVAR_ARCHIVE );
 
 	ui.Cvar_Create( "ui_disableWeaponSway", "0", CVAR_ARCHIVE );
+#endif
 
 	
 
 	_UI_Init(inGameLoad);
 }
-
-// these are only here so the functions in q_shared.c can link
-
-#ifndef UI_HARD_LINKED
-
-/*
-================
-Com_Error
-=================
-*/
-/*
-void Com_Error( int level, const char *error, ... ) 
-{
-	va_list		argptr;
-	char		text[1024];
-
-	va_start (argptr, error);
-	vsprintf (text, error, argptr);
-	va_end (argptr);
-
-	ui.Error( level, "%s", text);
-}
-*/
-/*
-================
-Com_Printf
-=================
-*/
-/*
-void Com_Printf( const char *msg, ... ) 
-{
-	va_list		argptr;
-	char		text[1024];
-
-	va_start (argptr, msg);
-	vsprintf (text, msg, argptr);
-	va_end (argptr);
-
-	ui.Printf( "%s", text);
-}
-*/
-#endif
-
 
 /*
 ================

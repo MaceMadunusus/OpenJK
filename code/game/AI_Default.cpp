@@ -1,12 +1,26 @@
-#include "g_headers.h"
+/*
+This file is part of Jedi Academy.
 
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
+#include "../cgame/cg_local.h"
+#include "b_local.h"
+#include "g_nav.h"
 #include "Q3_Interface.h"
 
-//#include "anims.h"
-//extern int PM_AnimLength( int index, animNumber_t anim );
-//extern qboolean PM_HasAnimation( gentity_t *ent, int animation );
-//extern int PM_AnimLength( int index, animNumber_t anim );
-//#define	MAX_IDLE_ANIMS	8
 extern int g_crosshairEntNum;
 
 /*

@@ -1,11 +1,27 @@
-// leave this line at the top of all AI_xxxx.cpp files for PCH reasons...
-#include "g_headers.h"
+/*
+This file is part of Jedi Academy.
 
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
 
 #include "b_local.h"
 #include "g_nav.h"
 #include "anims.h"
 #include "g_navigator.h"
+#include "../cgame/cg_local.h"
+#include "g_functions.h"
 
 extern void CG_DrawAlert( vec3_t origin, float rating );
 extern void G_AddVoiceEvent( gentity_t *self, int event, int speakDebounceTime );
@@ -32,11 +48,6 @@ extern int PM_AnimLength( int index, animNumber_t anim );
 
 qboolean NPC_CheckPlayerTeamStealth( void );
 
-static qboolean enemyLOS;
-static qboolean enemyCS;
-static qboolean faceEnemy;
-static qboolean move;
-static qboolean shoot;
 static float	enemyDist;
 
 //Local state enums

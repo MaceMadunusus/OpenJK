@@ -1,3 +1,21 @@
+/*
+This file is part of Jedi Knight 2.
+
+    Jedi Knight 2 is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Knight 2 is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Knight 2.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 #ifndef __G_NAVIGATOR__
 #define __G_NAVIGATOR__
 
@@ -57,7 +75,7 @@ class CNode
 	{
 		int		ID;
 		int		cost;
-		BYTE	flags;
+		unsigned char	flags;
 	} edge_t;
 
 	typedef	vector< edge_t >	edge_v;
@@ -82,7 +100,7 @@ public:
 	int	GetEdgeNumToNode( int ID );
 	int GetEdge( int edgeNum );
 	int GetEdgeCost( int edgeNum );
-	BYTE GetEdgeFlags( int edgeNum );
+	unsigned char GetEdgeFlags( int edgeNum );
 	void SetEdgeFlags( int edgeNum, int newFlags );
 	int	GetRadius( void )				const	{	return m_radius;	}
 
@@ -130,7 +148,7 @@ class CNavigator
 
 #if __NEWCOLLECT
 	
-	typedef struct nodeList_t
+	struct nodeList_t
 	{
 		int				nodeID;
 		unsigned int	distance;
@@ -173,7 +191,7 @@ public:
 	int GetNodeEdge( int nodeID, int edge );
 	float GetNodeLeadDistance( int nodeID );
 
-	int GetNumNodes( void )		const	{	return m_nodes.size();		}
+	int GetNumNodes( void )		const	{	return (int)m_nodes.size();		}
 	
 	bool Connected( int startID, int endID );
 

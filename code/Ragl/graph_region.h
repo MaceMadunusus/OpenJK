@@ -1,3 +1,21 @@
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2002-2013 Activision
+
 ////////////////////////////////////////////////////////////////////////////////////////
 // RAVEN STANDARD TEMPLATE LIBRARY
 //  (c) 2002 Activision
@@ -183,7 +201,7 @@ public:
 	bool	find_regions(const typename TGraph::user& user)
 	{
 		int		CurNodeIndex;
-		for (TGraph::TNodes::iterator i=mGraph.nodes_begin(); i!=mGraph.nodes_end(); i++)
+		for (typename TGraph::TNodes::iterator i=mGraph.nodes_begin(); i!=mGraph.nodes_end(); i++)
 		{
 			CurNodeIndex = i.index();
 			if (mRegions[CurNodeIndex] == NULL_REGION)
@@ -399,7 +417,7 @@ public:
 		if (mRegionCount)
 		{
 			int RegionEdges = 0;
-			for (TEdges::iterator it=mEdges.begin(); it!=mEdges.end(); it++)
+			for (typename TEdges::iterator it=mEdges.begin(); it!=mEdges.end(); it++)
 			{
 				RegionEdges += (*it).size();
 			}

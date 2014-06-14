@@ -1,3 +1,21 @@
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 // leave this as first line for PCH reasons...
 //
 #include "../server/exe_headers.h"
@@ -9,7 +27,7 @@
 Ghoul2 Insert Start
 */
 #if !defined (MINIHEAP_H_INC)
-	#include "../qcommon/miniheap.h"
+	#include "../qcommon/MiniHeap.h"
 #endif
 /*
 Ghoul2 Insert End
@@ -49,7 +67,7 @@ Converts newlines to "\n" so a line prints nicer
 */
 char	*SV_ExpandNewlines( char *in ) {
 	static	char	string[1024];
-	int		l;
+	size_t		l;
 
 	l = 0;
 	while ( *in && l < sizeof(string) - 3 ) {
@@ -104,16 +122,22 @@ A NULL client will broadcast to all clients
 void SV_SendServerCommand(client_t *cl, const char *fmt, ...) {
 	va_list		argptr;
 	byte		message[MAX_MSGLEN];
-	int			len;
 	client_t	*client;
 	int			j;
 	
 	message[0] = svc_serverCommand;
 
 	va_start (argptr,fmt);
-	vsprintf ((char *)message+1, fmt,argptr);
+	Q_vsnprintf( (char *)message+1, sizeof(message)-1, fmt, argptr );
 	va_end (argptr);
-	len = strlen( (char *)message ) + 1;
+
+	// Fix to http://aluigi.altervista.org/adv/q3msgboom-adv.txt
+	// The actual cause of the bug is probably further downstream
+	// and should maybe be addressed later, but this certainly
+	// fixes the problem for now
+	if ( strlen ((char *)message+1) > 1022 ) {
+		return;
+	}
 
 	if ( cl != NULL ) {
 		SV_AddServerCommand( cl, (char *)message );
@@ -175,10 +199,9 @@ void SVC_Status( netadr_t from ) {
 			} else {
 				score = 0;
 			}
-			Com_sprintf (player, sizeof(player), "%i %i \"%s\"\n", 
-				score, cl->ping, cl->name);
+			Com_sprintf( player, sizeof( player ), "%i %i \"%s\"\n", score, cl->name );
 			playerLength = strlen(player);
-			if (statusLength + playerLength >= sizeof(status) ) {
+			if (statusLength + playerLength >= (int)sizeof(status) ) {
 				break;		// can't hold any more
 			}
 			strcpy (status + statusLength, player);
@@ -236,7 +259,7 @@ connectionless packets.
 */
 static void SV_ConnectionlessPacket( netadr_t from, msg_t *msg ) {
 	char	*s;
-	char	*c;
+	const char	*c;
 
 	MSG_BeginReading( msg );
 	MSG_ReadLong( msg );		// skip the -1 marker
@@ -332,98 +355,35 @@ void SV_PacketEvent( netadr_t from, msg_t *msg ) {
 	NET_OutOfBandPrint( NS_SERVER, from, "disconnect" );
 }
 
-
-/*
-===================
-SV_CalcPings
-
-Updates the cl->ping variables
-===================
-*/
-void SV_CalcPings (void) {
-	int			i, j;
-	client_t	*cl;
-	int			total, count;
-	int			delta;
-
-	for (i=0 ; i < 1 ; i++) {
-		cl = &svs.clients[i];
-		if ( cl->state != CS_ACTIVE ) {
-			continue;
-		}
-		if ( cl->gentity->svFlags & SVF_BOT ) {
-			continue;
-		}
-
-		total = 0;
-		count = 0;
-		for ( j = 0 ; j < PACKET_BACKUP ; j++ ) {
-			delta = cl->frames[j].messageAcked - cl->frames[j].messageSent;
-			if ( delta >= 0 ) {
-				count++;
-				total += delta;
-			}
-		}
-		if (!count) {
-			cl->ping = 999;
-		} else {
-			cl->ping = total/count;
-			if ( cl->ping > 999 ) {
-				cl->ping = 999;
-			}
-		}
-
-		// let the game dll know about the ping
-		cl->gentity->client->ping = cl->ping;
-	}
-}
-
-/*
-==================
-SV_CheckTimeouts
-
-If a packet has not been received from a client for timeout->integer 
-seconds, drop the conneciton.  Server time is used instead of
-realtime to avoid dropping the local client while debugging.
-
-When a client is normally dropped, the client_t goes into a zombie state
-for a few seconds to make sure any final reliable message gets resent
-if necessary
-==================
-*/
+// If a packet has not been received from a client for timeout->integer seconds, drop the conneciton.
+// Server time is used instead of realtime to avoid dropping the local client while debugging.
+// When a client is normally dropped, the client_t goes into a zombie state for a few seconds to make sure any final
+//	reliable message gets resent if necessary
 void SV_CheckTimeouts( void ) {
-	int		i;
-	client_t	*cl;
-	int			droppoint;
-	int			zombiepoint;
+	client_t *cl = svs.clients;
 
-	droppoint = sv.time - 1000 * sv_timeout->integer;
-	zombiepoint = sv.time - 1000 * sv_zombietime->integer;
+	int droppoint = sv.time - 1000 * sv_timeout->integer;
+	int zombiepoint = sv.time - 1000 * sv_zombietime->integer;
 
-	for (i=0,cl=svs.clients ; i < 1 ; i++,cl++) {
-		// message times may be wrong across a changelevel
-		if (cl->lastPacketTime > sv.time) {
-			cl->lastPacketTime = sv.time;
-		}
+	// message times may be wrong across a changelevel
+	if ( cl->lastPacketTime > sv.time )
+		cl->lastPacketTime = sv.time;
 
-		if (cl->state == CS_ZOMBIE
-		&& cl->lastPacketTime < zombiepoint) {
-			cl->state = CS_FREE;	// can now be reused
-			continue;
-		}
-		if ( cl->state >= CS_CONNECTED && cl->lastPacketTime < droppoint) {
-			// wait several frames so a debugger session doesn't
-			// cause a timeout
-			if ( ++cl->timeoutCount > 5 ) {
-				SV_DropClient (cl, "timed out"); 
-				cl->state = CS_FREE;	// don't bother with zombie state
-			}
-		} else {
-			cl->timeoutCount = 0;
+	if ( cl->state == CS_ZOMBIE && cl->lastPacketTime < zombiepoint ) {
+		cl->state = CS_FREE;	// can now be reused
+		return;
+	}
+
+	if ( cl->state >= CS_CONNECTED && cl->lastPacketTime < droppoint ) {
+		// wait several frames so a debugger session doesn't cause a timeout
+		if ( ++cl->timeoutCount > 5 ) {
+			SV_DropClient( cl, "timed out" ); 
+			cl->state = CS_FREE; // don't bother with zombie state
 		}
 	}
+	else
+		cl->timeoutCount = 0;
 }
-
 
 /*
 ==================
@@ -435,7 +395,7 @@ qboolean SV_CheckPaused( void ) {
 		return qfalse;
 	}
 
-	sv_paused->integer = 1;
+	Cvar_Set("sv_paused", "1");
 	return qtrue;
 }
 
@@ -546,7 +506,7 @@ void SV_Frame( int msec,float fractionMsec ) {
 	while ( sv.timeResidual >= frameMsec ) {
 		sv.timeResidual -= frameMsec;
 		sv.time += frameMsec;
-		G2API_SetTime(sv.time,G2T_SV_TIME);
+		re.G2API_SetTime(sv.time,G2T_SV_TIME);
 
 		// let everything in the world think and move
 		ge->RunFrame( sv.time );
@@ -559,10 +519,7 @@ void SV_Frame( int msec,float fractionMsec ) {
 	SG_TestSave();	// returns immediately if not active, used for fake-save-every-cycle to test (mainly) Icarus disk code
 
 	// check timeouts
-	SV_CheckTimeouts ();
-
-	// update ping based on the last known frame from all clients
-	SV_CalcPings ();
+	SV_CheckTimeouts();
 
 	// send messages back to the clients
 	SV_SendClientMessages ();

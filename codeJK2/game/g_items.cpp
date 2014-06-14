@@ -1,3 +1,21 @@
+/*
+This file is part of Jedi Knight 2.
+
+    Jedi Knight 2 is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Knight 2 is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Knight 2.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 // leave this line at the top for all g_xxxx.cpp files...
 #include "g_headers.h"
 
@@ -70,13 +88,13 @@ int Pickup_Holdable( gentity_t *ent, gentity_t *other )
 	if ( ent->item->giTag == INV_SECURITY_KEY )
 	{//give the key
 		//FIXME: temp message
-		gi.SendServerCommand( NULL, "cp @INGAME_YOU_TOOK_SECURITY_KEY" );
+		gi.SendServerCommand( 0, "cp @INGAME_YOU_TOOK_SECURITY_KEY" );
 		INV_SecurityKeyGive( other, ent->message );
 	}
 	else if ( ent->item->giTag == INV_GOODIE_KEY )
 	{//give the key
 		//FIXME: temp message
-		gi.SendServerCommand( NULL, "cp @INGAME_YOU_TOOK_SUPPLY_KEY" );
+		gi.SendServerCommand( 0, "cp @INGAME_YOU_TOOK_SUPPLY_KEY" );
 		INV_GoodieKeyGive( other );
 	}
 	else
@@ -421,6 +439,13 @@ void RespawnItem( gentity_t *ent ) {
 
 qboolean CheckItemCanBePickedUpByNPC( gentity_t *item, gentity_t *pickerupper )
 {
+	if ( !item->item ) {
+		return qfalse;
+	}
+	if ( item->item->giType == IT_HOLDABLE &&
+		item->item->giTag == INV_SECURITY_KEY ) {
+		return qfalse;
+	}
 	if ( (item->flags&FL_DROPPED_ITEM) 
 		&& item->activator != &g_entities[0] 
 		&& pickerupper->s.number 
@@ -428,8 +453,7 @@ qboolean CheckItemCanBePickedUpByNPC( gentity_t *item, gentity_t *pickerupper )
 		&& pickerupper->enemy 
 		&& pickerupper->painDebounceTime < level.time
 		&& pickerupper->NPC && pickerupper->NPC->surrenderTime < level.time //not surrendering
-		&& !(pickerupper->NPC->scriptFlags&SCF_FORCED_MARCH) //not being forced to march
-		&& item->item->giTag != INV_SECURITY_KEY )
+		&& !(pickerupper->NPC->scriptFlags&SCF_FORCED_MARCH) ) // not being forced to march
 	{//non-player, in combat, picking up a dropped item that does NOT belong to the player and it *not* a security key
 		if ( level.time - item->s.time < 3000 )//was 5000
 		{
@@ -911,7 +935,10 @@ ClearRegisteredItems
 ==============
 */
 void ClearRegisteredItems( void ) {
-	memset( itemRegistered, '0', bg_numItems );
+	for ( int i = 0; i < bg_numItems; i++ )
+	{
+		itemRegistered[i] = '0';
+	}
 	itemRegistered[ bg_numItems ] = 0;
 
 	RegisterItem( FindItemForWeapon( WP_BRYAR_PISTOL ) );	//these are given in g_client, ClientSpawn(), but MUST be registered HERE, BEFORE cgame starts.

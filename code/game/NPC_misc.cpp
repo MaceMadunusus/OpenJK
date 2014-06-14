@@ -1,15 +1,27 @@
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 //
 // NPC_misc.cpp
 //
 
-// leave this line at the top for all NPC_xxxx.cpp files...
-#include "g_headers.h"
-
-
-
-
 #include "b_local.h"
-#include "q_shared.h"
+#include "../qcommon/q_shared.h"
 /*
 Debug_Printf
 */
@@ -34,7 +46,7 @@ void Debug_Printf (cvar_t *cv, int debugLevel, char *fmt, ...)
 		color = S_COLOR_RED;
 
 	va_start (argptr,fmt);
-	vsprintf (msg, fmt, argptr);
+	Q_vsnprintf (msg, sizeof(msg), fmt, argptr);
 	va_end (argptr);
 
 	gi.Printf("%s%5i:%s", color, level.time, msg);
@@ -72,7 +84,7 @@ void Debug_NPCPrintf (gentity_t *printNPC, cvar_t *cv, int debugLevel, char *fmt
 		color = COLOR_RED;
 
 	va_start (argptr,fmt);
-	vsprintf (msg, fmt, argptr);
+	Q_vsnprintf (msg, sizeof(msg), fmt, argptr);
 	va_end (argptr);
 
 	gi.Printf ("%c%c%5i (%s) %s", Q_COLOR_ESCAPE, color, level.time, printNPC->targetname, msg);

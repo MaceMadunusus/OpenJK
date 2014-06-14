@@ -1,12 +1,28 @@
+/*
+This file is part of Jedi Knight 2.
+
+    Jedi Knight 2 is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Knight 2 is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Knight 2.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 // cg_draw.c -- draw all of the graphical elements during
 // active (after loading) gameplay
 
-// this line must stay at top so the whole PCH thing works...
-#include "cg_headers.h"
-
-//#include "cg_local.h"
+#include "../game/g_local.h"
+#include "cg_local.h"
 #include "cg_media.h"
-#include "..\game\objectives.h"
+#include "../game/objectives.h"
 
 void CG_DrawIconBackground(void);
 void CG_DrawMissionInformation( void );
@@ -722,12 +738,17 @@ static void CG_DrawBatteryCharge( void )
 CG_DrawHUD
 ================
 */
+extern void *cgi_UI_GetMenuByName( const char *menu );
+extern void cgi_UI_Menu_Paint( void *menu, qboolean force );
 static void CG_DrawHUD( centity_t *cent )
 {
 	int x,y,value;
 	
 	if (cgi_UI_GetMenuInfo("lefthud",&x,&y))
 	{
+		// Draw all the HUD elements --eez
+		cgi_UI_Menu_Paint( cgi_UI_GetMenuByName( "lefthud" ), qtrue );
+
 		// Draw armor & health values
 		if ( cg_draw2D.integer == 2 ) 
 		{
@@ -743,6 +764,9 @@ static void CG_DrawHUD( centity_t *cent )
 
 	if (cgi_UI_GetMenuInfo("righthud",&x,&y))
 	{
+		// Draw all the HUD elements --eez
+		cgi_UI_Menu_Paint( cgi_UI_GetMenuByName( "righthud" ), qtrue );
+
 		// Draw armor & health values
 		if ( cg_draw2D.integer == 2 ) 
 		{
@@ -1180,16 +1204,12 @@ CG_DrawStats
 static void CG_DrawStats( void ) 
 {
 	centity_t		*cent;
-	playerState_t	*ps;
-	vec3_t			angles;
-//	vec3_t		origin;
 
 	if ( cg_drawStatus.integer == 0 ) {
 		return;
 	}
 
 	cent = &cg_entities[cg.snap->ps.clientNum];
-	ps = &cg.snap->ps;
 
 	if ((cg.snap->ps.viewEntity>0&&cg.snap->ps.viewEntity<ENTITYNUM_WORLD))
 	{
@@ -1197,8 +1217,6 @@ static void CG_DrawStats( void )
 		CG_DrawCustomHealthHud( cent );
 		return;
 	}
-
-	VectorClear( angles );
 
 	cgi_UI_MenuPaintAll();
 
@@ -1244,7 +1262,7 @@ static void CG_DrawPickupItem( void ) {
 	}
 }
 
-extern int cgi_EndGame(void);
+void CMD_CGCam_Disable( void );
 
 /*
 ===================
@@ -1272,7 +1290,8 @@ void CG_DrawCredits(void)
 		if ( !CG_Credits_Running() ) 
 		{
 			cgi_Cvar_Set( "cg_endcredits", "0" );
-			cgi_EndGame();
+			CMD_CGCam_Disable();
+			cgi_SendConsoleCommand("set nextmap disconnect ; cinematic outcast\n");
 		}
 	}
 }
@@ -1532,45 +1551,40 @@ qboolean CG_WorldCoordToScreenCoord(vec3_t worldCoord, int *x, int *y)
 */
 qboolean CG_WorldCoordToScreenCoordFloat(vec3_t worldCoord, float *x, float *y)
 {
-	int	xcenter, ycenter;
-	vec3_t	local, transformed;
+    vec3_t trans;
+    float xc, yc;
+    float px, py;
+    float z;
 
-//	xcenter = cg.refdef.width / 2;//gives screen coords adjusted for resolution
-//	ycenter = cg.refdef.height / 2;//gives screen coords adjusted for resolution
-	
-	//NOTE: did it this way because most draw functions expect virtual 640x480 coords
-	//	and adjust them for current resolution
-	xcenter = 640 / 2;//gives screen coords in virtual 640x480, to be adjusted when drawn
-	ycenter = 480 / 2;//gives screen coords in virtual 640x480, to be adjusted when drawn
+    px = tan(cg.refdef.fov_x * (M_PI / 360) );
+    py = tan(cg.refdef.fov_y * (M_PI / 360) );
 
-	VectorSubtract (worldCoord, cg.refdef.vieworg, local);
+    VectorSubtract(worldCoord, cg.refdef.vieworg, trans);
 
-	transformed[0] = DotProduct(local,vright);
-	transformed[1] = DotProduct(local,vup);
-	transformed[2] = DotProduct(local,vfwd);		
+    xc = 640 / 2.0;
+    yc = 480 / 2.0;
 
-	// Make sure Z is not negative.
-	if(transformed[2] < 0.01)
-	{
-		return qfalse;
-	}
-	// Simple convert to screen coords.
-	float xzi = xcenter / transformed[2] * (90.0/cg.refdef.fov_x);
-	float yzi = ycenter / transformed[2] * (90.0/cg.refdef.fov_y);
+	// z = how far is the object in our forward direction
+    z = DotProduct(trans, cg.refdef.viewaxis[0]);
+    if (z <= 0.001)
+        return qfalse;
 
-	*x = xcenter + xzi * transformed[0];
-	*y = ycenter - yzi * transformed[1];
+    *x = xc - DotProduct(trans, cg.refdef.viewaxis[1])*xc/(z*px);
+    *y = yc - DotProduct(trans, cg.refdef.viewaxis[2])*yc/(z*py);
 
-	return qtrue;
+    return qtrue;
 }
 
-qboolean CG_WorldCoordToScreenCoord( vec3_t worldCoord, int *x, int *y )
-{
-	float	xF, yF;
-	qboolean retVal = CG_WorldCoordToScreenCoordFloat( worldCoord, &xF, &yF );
-	*x = (int)xF;
-	*y = (int)yF;
-	return retVal;
+qboolean CG_WorldCoordToScreenCoord( vec3_t worldCoord, int *x, int *y ) {
+	float xF, yF;
+
+	if ( CG_WorldCoordToScreenCoordFloat( worldCoord, &xF, &yF ) ) {
+		*x = (int)xF;
+		*y = (int)yF;
+		return qtrue;
+	}
+
+	return qfalse;
 }
 
 // I'm keeping the rocket tracking code separate for now since I may want to do different logic...but it still uses trace info from scanCrosshairEnt
@@ -1787,7 +1801,7 @@ static void CG_ScanForCrosshairEntity( qboolean scanAll )
 			}
 			else
 			{
-				extern void CalcMuzzlePoint( gentity_t *ent, vec3_t forward, vec3_t right, vec3_t up, vec3_t muzzlePoint, float lead_in );
+				extern void CalcMuzzlePoint( gentity_t *const ent, vec3_t forward, vec3_t right, vec3_t up, vec3_t muzzlePoint, float lead_in );
 				AngleVectors( cg_entities[0].lerpAngles, d_f, d_rt, d_up );
 				CalcMuzzlePoint( &g_entities[0], d_f, d_rt, d_up, start , 0 );
 			}
@@ -1829,11 +1843,8 @@ static void CG_ScanForCrosshairEntity( qboolean scanAll )
 		return;
 	}
 */
-	//CROSSHAIR is now always drawn from this trace so it's 100% accurate
-	if ( cg_dynamicCrosshair.integer )
-	{//draw crosshair at endpoint
-		CG_DrawCrosshair( trace.endpos );
-	}
+	//draw crosshair at endpoint
+	CG_DrawCrosshair( trace.endpos );
 
 	g_crosshairEntNum = trace.entityNum;
 	g_crosshairEntDist = 4096*trace.fraction;
@@ -1908,6 +1919,7 @@ static void CG_DrawCrosshairNames( void )
 	{
 		// still need to scan for dynamic crosshair
 		CG_ScanForCrosshairEntity( scanAll );
+		return;
 	}
 
 	if ( !player->gent )
@@ -2090,40 +2102,39 @@ static float CG_DrawSnapshot( float y ) {
 CG_DrawFPS
 ==================
 */
-#define	FPS_FRAMES	4
+#define	FPS_FRAMES	16
 static float CG_DrawFPS( float y ) {
 	char		*s;
-	int			w;
-	static int	previousTimes[FPS_FRAMES];
-	static int	index;
-	int		i, total;
-	int		fps;
-	static	int	previous;
-	int		t, frameTime;
+	static unsigned short previousTimes[FPS_FRAMES];
+	static unsigned short index;
+	static int	previous, lastupdate;
+	int		t, i, fps, total;
+	unsigned short frameTime;
 
 	// don't use serverTime, because that will be drifting to
 	// correct for internet lag changes, timescales, timedemos, etc
 	t = cgi_Milliseconds();
 	frameTime = t - previous;
 	previous = t;
-
-	previousTimes[index % FPS_FRAMES] = frameTime;
-	index++;
-	if ( index > FPS_FRAMES ) {
-		// average multiple frames together to smooth changes out a bit
-		total = 0;
-		for ( i = 0 ; i < FPS_FRAMES ; i++ ) {
-			total += previousTimes[i];
-		}
-		if ( !total ) {
-			total = 1;
-		}
-		fps = 1000 * FPS_FRAMES / total;
-
-		s = va( "%ifps", fps );
-		w = cgi_R_Font_StrLenPixels(s, cgs.media.qhFontMedium, 1.0f);	
-		cgi_R_Font_DrawString(635 - w, y+2, s, colorTable[CT_LTGOLD1], cgs.media.qhFontMedium, -1, 1.0f);
+	if (t - lastupdate > 50)	//don't sample faster than this
+	{
+		lastupdate = t;
+		previousTimes[index % FPS_FRAMES] = frameTime;
+		index++;
 	}
+	// average multiple frames together to smooth changes out a bit
+	total = 0;
+	for ( i = 0 ; i < FPS_FRAMES ; i++ ) {
+		total += previousTimes[i];
+	}
+	if ( !total ) {
+		total = 1;
+	}
+	fps = 1000 * FPS_FRAMES / total;
+
+	s = va( "%ifps", fps );
+	const int w = cgi_R_Font_StrLenPixels(s, cgs.media.qhFontMedium, 1.0f);	
+	cgi_R_Font_DrawString(635 - w, y+2, s, colorTable[CT_LTGOLD1], cgs.media.qhFontMedium, -1, 1.0f);
 
 	return y + BIGCHAR_HEIGHT + 10;
 }
@@ -2238,9 +2249,7 @@ static void CG_Draw2D( void )
 {
 	char	text[1024]={0};
 	int		w,y_pos;
-	centity_t *cent;
-
-	cent = &cg_entities[cg.snap->ps.clientNum];
+	centity_t *cent = &cg_entities[cg.snap->ps.clientNum];
 
 	// if we are taking a levelshot for the menu, don't draw anything
 	if ( cg.levelShot ) 
@@ -2279,7 +2288,6 @@ static void CG_Draw2D( void )
 
 	CG_DrawScrollText();
 	CG_DrawCaptionText(); 
-	CG_DrawGameText();
 
 	if ( in_camera )
 	{//still draw the saber clash flare, but nothing else
@@ -2313,10 +2321,10 @@ static void CG_Draw2D( void )
 		CG_DrawAmmoWarning();
 
 		//CROSSHAIR is now done from the crosshair ent trace
-		if ( !cg.renderingThirdPerson && !cg_dynamicCrosshair.integer ) // disruptor draws it's own crosshair artwork; binocs draw nothing; third person draws its own crosshair
-		{
-			CG_DrawCrosshair( NULL );
-		}
+		//if ( !cg.renderingThirdPerson && !cg_dynamicCrosshair.integer ) // disruptor draws it's own crosshair artwork; binocs draw nothing; third person draws its own crosshair
+		//{
+		//	CG_DrawCrosshair( NULL );
+		//}
 
 
 		CG_DrawCrosshairNames();
@@ -2347,12 +2355,6 @@ static void CG_Draw2D( void )
 		CG_DrawCenterString();
 	}
 
-/*	if (cg.showInformation)
-	{
-//		CG_DrawMissionInformation();
-	}
-	else 
-*/	
 	if (missionInfo_Updated)
 	{	
 		if (cg.predicted_player_state.pm_type != PM_DEAD)

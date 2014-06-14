@@ -1,6 +1,20 @@
-// leave this line at the top for all g_xxxx.cpp files...
-#include "g_headers.h"
+/*
+This file is part of Jedi Academy.
 
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
 
 #include "g_local.h"
 #include "objectives.h"
@@ -101,7 +115,8 @@ void G_ReadSessionData( gclient_t *client ) {
 	var = va( "session%i", client - level.clients );
 	gi.Cvar_VariableStringBuffer( var, s, sizeof(s) );
 
-	sscanf( s, "%i", &client->sess.sessionTeam );
+	sscanf( s, "%i", &i );
+	client->sess.sessionTeam = (team_t)i;
 
 	var = va( "sessionobj%i", client - level.clients );
 	gi.Cvar_VariableStringBuffer( var, s, sizeof(s) );

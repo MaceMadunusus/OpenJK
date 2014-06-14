@@ -1,10 +1,28 @@
+/*
+This file is part of Jedi Knight 2.
+
+    Jedi Knight 2 is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Knight 2 is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Knight 2.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 // leave this line at the top for all g_xxxx.cpp files...
 #include "g_headers.h"
 
 
 #include "g_local.h"
 #include "g_functions.h"
-#include "..\cgame\cg_local.h"
+#include "../cgame/cg_local.h"
 #include "Q3_Interface.h"
 #include "wp_saber.h"
 #include "g_icarus.h"
@@ -824,15 +842,12 @@ void	G_TouchTriggersLerped( gentity_t *ent ) {
 #ifdef _DEBUG
 	for ( int j = 0; j < 3; j++ )
 	{
-		assert( !_isnan(ent->currentOrigin[j]));
-		assert( !_isnan(ent->lastOrigin[j]));
+		assert( !Q_isnan(ent->currentOrigin[j]));
+		assert( !Q_isnan(ent->lastOrigin[j]));
 	}
 #endif// _DEBUG
 	VectorSubtract( ent->currentOrigin, ent->lastOrigin, diff );
 	dist = VectorNormalize( diff );
-#ifdef _DEBUG
-	assert( (dist<1024) && "insane distance in G_TouchTriggersLerped!" );
-#endif// _DEBUG
 
 	memset (touched, qfalse, sizeof(touched) );
 
@@ -1225,11 +1240,11 @@ void ClientEvents( gentity_t *ent, int oldEventSequence ) {
 	int		event;
 	gclient_t *client;
 	//int		damage;
-	qboolean	fired;
+#ifndef FINAL_BUILD
+	qboolean	fired = qfalse;
+#endif
 
 	client = ent->client;
-
-	fired = qfalse;
 
 	for ( i = oldEventSequence ; i < client->ps.eventSequence ; i++ ) {
 		event = client->ps.events[ i & (MAX_PS_EVENTS-1) ];
@@ -1260,8 +1275,8 @@ void ClientEvents( gentity_t *ent, int oldEventSequence ) {
 			if ( fired ) {
 				gi.Printf( "DOUBLE EV_FIRE_WEAPON AND-OR EV_ALT_FIRE!!\n" );
 			}
-#endif
 			fired = qtrue;
+#endif
 			FireWeapon( ent, qfalse );
 			break;
 
@@ -1270,8 +1285,8 @@ void ClientEvents( gentity_t *ent, int oldEventSequence ) {
 			if ( fired ) {
 				gi.Printf( "DOUBLE EV_FIRE_WEAPON AND-OR EV_ALT_FIRE!!\n" );
 			}
-#endif
 			fired = qtrue;
+#endif
 			FireWeapon( ent, qtrue );
 			break;
 
@@ -1961,6 +1976,8 @@ void G_CheckMovingLoopingSounds( gentity_t *ent, usercmd_t *ucmd )
 				break;
 			case CLASS_PROBE:
 				ent->s.loopSound = G_SoundIndex( "sound/chars/probe/misc/probedroidloop" );
+			default:
+				break;
 			}
 		}
 		else
@@ -2109,9 +2126,7 @@ extern cvar_t	*g_skippingcin;
 			}
 			if ( ent->client->ps.pm_type == PM_DEAD && cg.missionStatusDeadTime < level.time )
 			{//mission status screen is up because player is dead, stop all scripts
-				if (Q_stricmpn(level.mapname,"_holo",5)) {
-					stop_icarus = qtrue;
-				}
+				stop_icarus = qtrue;
 			}
 		}
 
@@ -2939,6 +2954,14 @@ void ClientThink( int clientNum, usercmd_t *ucmd ) {
 				if ( controlled->NPC->controlledTime < level.time )
 				{//time's up!
 					G_ClearViewEntity( ent );
+					freed = qtrue;
+				}
+				else if ( ucmd->upmove > 0 )
+				{//jumping gets you out of it FIXME: check some other button instead... like ESCAPE... so you could even have total control over an NPC?
+					G_ClearViewEntity( ent );
+					ucmd->upmove = 0;//ucmd->buttons = 0;
+					//stop player from doing anything for a half second after
+					ent->aimDebounceTime = level.time + 500;
 					freed = qtrue;
 				}
 			}

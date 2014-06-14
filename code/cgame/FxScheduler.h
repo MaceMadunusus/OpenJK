@@ -1,3 +1,20 @@
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
 
 #if !defined(FX_UTIL_H_INC)
 	#include "FxUtil.h"
@@ -6,10 +23,6 @@
 
 #include "../qcommon/sstring.h"
 typedef sstring_t fxString_t;
-
-#if !defined(FX_PARSING_H_INC)
-	#include "FxParsing.h"
-#endif
 
 #ifndef FX_SCHEDULER_H_INC
 #define FX_SCHEDULER_H_INC
@@ -71,7 +84,7 @@ public:
 
 	void	AddHandle( int item )	{ mMediaList.push_back( item );	}
 	int		GetHandle()				{ if (mMediaList.size()==0) {return 0;}
-										else {return mMediaList[irand(0,mMediaList.size()-1)];} }
+										else {return mMediaList[irand(0,(int)mMediaList.size()-1)];} }
 
 	void operator=(const CMediaHandles &that );
 };
@@ -199,6 +212,7 @@ public:
 
 	CFxRange		mRadius;		// spawn on sphere/ellipse/disk stuff.
 	CFxRange		mHeight;
+	CFxRange		mWindModifier;
 
 	CFxRange		mRotation;
 	CFxRange		mRotationDelta;
@@ -277,6 +291,7 @@ public:
 	bool ParseOrigin2( const char *val );
 	bool ParseRadius( const char *val );
 	bool ParseHeight( const char *val );
+	bool ParseWindModifier( const char *val );
 	bool ParseRotation( const char *val );
 	bool ParseRotationDelta( const char *val );
 	bool ParseAngle( const char *val );
@@ -355,7 +370,7 @@ struct SEffectTemplate
 
 	bool operator == (const char * name) const 
 	{
-		return !stricmp( mEffectName, name );
+		return !Q_stricmp( mEffectName, name );
 	}
 	void operator=(const SEffectTemplate &that);
 };
@@ -467,7 +482,7 @@ public:
 
 	void	AddScheduledEffects( bool portal );								// call once per CGame frame [rww ammendment - twice now actually, but first only renders portal effects]
 
-	int		NumScheduledFx()	{ return mFxSchedule.size();	}
+	int		NumScheduledFx()	{ return (int)mFxSchedule.size();	}
 	void	Clean(bool bRemoveTemplates = true, int idToPreserve = 0);	// clean out the system
 
 	// FX Override functions

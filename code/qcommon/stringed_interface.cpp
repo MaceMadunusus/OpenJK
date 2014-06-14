@@ -1,3 +1,21 @@
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 // Filename:-	stringed_interface.cpp
 //
 // This file contains functions that StringEd wants to call to do things like load/save, they can be modified
@@ -12,15 +30,17 @@
 //
 // stuff common to all qcommon files...
 #include "../server/server.h"
-#include "../game/q_shared.h"
+#include "q_shared.h"
 #include "qcommon.h"
 //
 //////////////////////////////////////////////////
 
 
+#ifdef _MSC_VER
 #pragma warning ( disable : 4511 )			// copy constructor could not be generated
 #pragma warning ( disable : 4512 )			// assignment operator could not be generated
 #pragma warning ( disable : 4663 )			// C++ language change: blah blah template crap blah blah
+#endif
 #include "stringed_interface.h"
 #include "stringed_ingame.h"
 
@@ -142,7 +162,7 @@ static void SE_R_ListFiles( const char *psExtension, const char *psDir, string &
 		if (dirFiles[i][0] && dirFiles[i][0] != '.')	// skip blanks, plus ".", ".." etc
 		{
 			char	sDirName[MAX_QPATH];
-			sprintf(sDirName, "%s/%s", psDir, dirFiles[i]);
+			Com_sprintf(sDirName, sizeof(sDirName), "%s/%s", psDir, dirFiles[i]);
 			//
 			// for some reason the quake filesystem in this game now returns an extra slash on the end,
 			//	didn't used to. Sigh...
@@ -159,7 +179,7 @@ static void SE_R_ListFiles( const char *psExtension, const char *psDir, string &
 	for(i=0; i<numSysFiles; i++)
 	{
 		char	sFilename[MAX_QPATH];
-		sprintf(sFilename,"%s/%s", psDir, sysFiles[i]);		
+		Com_sprintf(sFilename, sizeof(sFilename), "%s/%s", psDir, sysFiles[i]);
 			
 //		Com_Printf("%sFound file: %s",!i?"\n":"",sFilename);
 

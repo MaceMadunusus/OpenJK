@@ -1,4 +1,24 @@
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 // win_local.h: Win32-specific Quake3 header file
+
+#pragma once
 
 #if defined (_MSC_VER) && (_MSC_VER >= 1200)
 #pragma warning(disable : 4201)
@@ -9,15 +29,12 @@
 #pragma warning( pop )
 #endif
 
-#ifndef _XBOX
 #define DIRECTINPUT_VERSION 0x0800 //[ 0x0300 | 0x0500 | 0x0700 | 0x0800 ]
 #include <dinput.h>
 #include <dsound.h>
-#else
-#include "../qcommon/platform.h"
-#endif
 
 void	IN_MouseEvent (int mstate);
+void	IN_RawMouseEvent( int lastX, int lastY ); // Send raw input events to the input subsystem
 
 void Sys_QueEvent( int time, sysEventType_t type, int value, int value2, int ptrLength, void *ptr );
 
@@ -41,19 +58,17 @@ void	IN_Activate (qboolean active);
 void	IN_Frame (void);
 
 // window procedure
-#ifndef _XBOX
 LONG WINAPI MainWndProc (
     HWND    hWnd,
     UINT    uMsg,
     WPARAM  wParam,
     LPARAM  lParam);
-#endif
 
 void Conbuf_AppendText( const char *msg );
 
 void SNDDMA_Activate( qboolean bAppActive );
+int  SNDDMA_InitDS ();
 
-#ifndef _XBOX
 typedef struct
 {
 	HWND			hWnd;
@@ -68,7 +83,6 @@ typedef struct
 } WinVars_t;
 
 extern WinVars_t	g_wv;
-#endif
 
 
 #define	MAX_QUED_EVENTS		256

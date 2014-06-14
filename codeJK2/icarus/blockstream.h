@@ -1,19 +1,46 @@
+/*
+This file is part of Jedi Knight 2.
+
+    Jedi Knight 2 is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Knight 2 is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Knight 2.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 // BlockStream.h
 
 #ifndef __INTERPRETED_BLOCK_STREAM__
 #define	__INTERPRETED_BLOCK_STREAM__
 
-#pragma warning(disable : 4786)  //identifier was truncated 
-#pragma warning(disable : 4514)  //unreffed inline func removed
+#ifdef _MSC_VER
+	#pragma warning(disable : 4786)  //identifier was truncated 
+	#pragma warning(disable : 4514)  //unreffed inline func removed
+#endif
 
 #include <stdio.h>
+#include <stdlib.h>
 
-#pragma warning (push, 3)	//go back down to 3 for the stl include
+#ifdef _MSC_VER
+	#pragma warning (push, 3)	//go back down to 3 for the stl include
+#endif
 #include <list>
 #include <vector>
-#pragma warning (pop)
+#ifdef _MSC_VER
+	#pragma warning (pop)
+#endif
+
 using namespace std;
 
+#define IBI_HEADER_ID_LENGTH 4 // Length of IBI_HEADER_ID + 1 for the null terminating byte.
 #define	IBI_EXT			".IBI"	//(I)nterpreted (B)lock (I)nstructions
 #define IBI_HEADER_ID	"IBI"
 
@@ -44,7 +71,7 @@ public:
 	void Free( void );
 
 	int WriteMember ( FILE * );				//Writes the member's data, in block format, to FILE *
-	int	ReadMember( char **, long * );		//Reads the member's data, in block format, from FILE *
+	int	ReadMember( char **, int * );		//Reads the member's data, in block format, from FILE *
 
 	void SetID( int id )		{	m_id = id;		}	//Set the ID member variable
 	void SetSize( int size )	{	m_size = size;	}	//Set the size member variable
@@ -66,10 +93,10 @@ public:
 	{
 		if ( m_data )
 		{
-			ICARUS_Free( m_data );
+			free( m_data );
 		}
 
-		m_data = ICARUS_Malloc( sizeof(T) );
+		m_data = malloc( sizeof(T) );
 		*((T *) m_data) = data;
 		m_size = sizeof(T);
 	}
@@ -78,10 +105,10 @@ public:
 	{
 		if ( m_data )
 		{
-			ICARUS_Free( m_data );
+			free( m_data );
 		}
 
-		m_data = ICARUS_Malloc( num*sizeof(T) );
+		m_data = malloc( num*sizeof(T) );
 		memcpy( m_data, data, num*sizeof(T) );
 		m_size = num*sizeof(T);
 	}
@@ -127,7 +154,7 @@ public:
 	CBlock *Duplicate( void );
 
 	int	GetBlockID( void )		const	{	return m_id;			}	//Get the ID for the block
-	int	GetNumMembers( void )	const	{	return m_members.size();}	//Get the number of member in the block's list
+	int	GetNumMembers( void )	const	{	return (int)m_members.size();}	//Get the number of member in the block's list
 
 	void SetFlags( unsigned char flags )	{	m_flags = flags;	}
 	void SetFlag( unsigned char flag )		{	m_flags |= flag;	}
@@ -174,14 +201,12 @@ protected:
 	long	GetLong( void );
 	float	GetFloat( void );
 
-	void	StripExtension( const char *, char * );	//Utility function to strip away file extensions
-
 	long	m_fileSize;							//Size of the file	
 	FILE	*m_fileHandle;						//Global file handle of current I/O source
 	char	m_fileName[MAX_FILENAME_LENGTH];	//Name of the current file
 
 	char	*m_stream;							//Stream of data to be parsed
-	long	m_streamPos;
+	int		m_streamPos;
 };
 
 #endif	//__INTERPRETED_BLOCK_STREAM__

@@ -1,3 +1,21 @@
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 /* Triangle/triangle intersection test routine,
  * by Tomas Moller, 1997.
  * See article "A Fast Triangle-Triangle Intersection Test",
@@ -12,15 +30,7 @@
  *
  */
 
-// leave this at the top for PCH reasons...
-#include "common_headers.h"
-
-
-
-
-#include <math.h>
-#include "../game/q_shared.h"
-#include "../game/g_local.h"
+#include "tri_coll_test.h"
 
 /* if USE_EPSILON_TEST is true then we do a check: 
          if |dv|<EPSILON then dv=0.0;

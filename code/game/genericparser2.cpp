@@ -1,3 +1,21 @@
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 // Filename:-	genericparser2.cpp
 
 // leave this at the top for PCH reasons...
@@ -6,8 +24,6 @@
 
 #ifdef _JK2EXE
 #include "../qcommon/qcommon.h"
-#else
-#include "g_headers.h"
 #endif
 
 
@@ -194,7 +210,7 @@ CTextPool::~CTextPool(void)
 #endif
 }
 
-char *CTextPool::AllocText(char *text, bool addNULL, CTextPool **poolPtr)
+char *CTextPool::AllocText(const char *text, bool addNULL, CTextPool **poolPtr)
 {
 	int	length = strlen(text) + (addNULL ? 1 : 0);
 
@@ -381,7 +397,7 @@ bool CGPValue::Parse(char **dataPtr, CTextPool **textPool)
 		{	// end of data - error!
 			return false;
 		}
-		else if (strcmpi(token, "]") == 0)
+		else if (Q_stricmp(token, "]") == 0)
 		{	// ending brace for this list
 			break;
 		}
@@ -591,7 +607,7 @@ void CGPGroup::SortObject(CGPObject *object, CGPObject **unsortedList, CGPObject
 		last = 0;
 		while(test)
 		{
-			if (strcmpi(object->GetName(), test->GetName()) < 0)
+			if (Q_stricmp(object->GetName(), test->GetName()) < 0)
 			{
 				break;
 			}
@@ -674,7 +690,7 @@ CGPGroup *CGPGroup::FindSubGroup(const char *name)
 	group = mSubGroups;
 	while(group)
 	{
-		if(!stricmp(name, group->GetName()))
+		if(!Q_stricmp(name, group->GetName()))
 		{
 			return(group);
 		}
@@ -705,7 +721,7 @@ bool CGPGroup::Parse(char **dataPtr, CTextPool **textPool)
 				break;
 			}
 		}
-		else if (strcmpi(token, "}") == 0)
+		else if (Q_stricmp(token, "}") == 0)
 		{	// ending brace for this group
 			break;
 		}
@@ -714,7 +730,7 @@ bool CGPGroup::Parse(char **dataPtr, CTextPool **textPool)
 
 		// read ahead to see what we are doing
 		token = GetToken(dataPtr, true, true);
-		if (strcmpi(token, "{") == 0)
+		if (Q_stricmp(token, "{") == 0)
 		{	// new sub group
 			newSubGroup = AddGroup(lastToken, textPool);
 			newSubGroup->SetWriteable(mWriteable);
@@ -723,7 +739,7 @@ bool CGPGroup::Parse(char **dataPtr, CTextPool **textPool)
 				return false;
 			}
 		}
-		else if (strcmpi(token, "[") == 0)
+		else if (Q_stricmp(token, "[") == 0)
 		{	// new pair list
 			newPair = AddPair(lastToken, 0, textPool);
 			if (!newPair->Parse(dataPtr, textPool))
@@ -792,7 +808,7 @@ CGPValue *CGPGroup::FindPair(const char *key)
 
 	while(pair)
 	{
-		if (strcmpi(pair->GetName(), key) == 0)
+		if (Q_stricmp(pair->GetName(), key) == 0)
 		{
 			return pair;
 		}
@@ -844,12 +860,6 @@ bool CGenericParser2::Parse(char **dataPtr, bool cleanFirst, bool writeable)
 {
 	CTextPool	*topPool;
 
-#ifdef _XBOX
-	// Parsers are temporary structures.  They exist mainly at load time.
-	extern void Z_SetNewDeleteTemporary(bool bTemp);
-	Z_SetNewDeleteTemporary(true);
-#endif
-
 	if (cleanFirst)
 	{
 		Clean();
@@ -864,11 +874,6 @@ bool CGenericParser2::Parse(char **dataPtr, bool cleanFirst, bool writeable)
 	mTopLevel.SetWriteable(writeable);
 	topPool = mTextPool;
 	bool ret = mTopLevel.Parse(dataPtr, &topPool);
-
-#ifdef _XBOX
-	Z_SetNewDeleteTemporary(false);
-#endif
-
 	return ret;
 }
 

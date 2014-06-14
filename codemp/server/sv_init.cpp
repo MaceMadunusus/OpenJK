@@ -1,20 +1,83 @@
-//Anything above this #include will be ignored by the compiler
-#include "qcommon/exe_headers.h"
-
 #include "server.h"
+#include "ghoul2/G2.h"
+#include "qcommon/cm_public.h"
+#include "qcommon/MiniHeap.h"
+#include "qcommon/stringed_ingame.h"
+#include "sv_gameapi.h"
 
 /*
-Ghoul2 Insert Start
+===============
+SV_SendConfigstring
+
+Creates and sends the server command necessary to update the CS index for the
+given client
+===============
 */
-#if !defined(TR_LOCAL_H)
-	#include "renderer/tr_local.h"
-#endif
+static void SV_SendConfigstring(client_t *client, int index)
+{
+	int maxChunkSize = MAX_STRING_CHARS - 24;
+	int len;
 
-#if !defined (MINIHEAP_H_INC)
-#include "qcommon/MiniHeap.h"
-#endif
+	len = strlen(sv.configstrings[index]);
 
-#include "qcommon/stringed_ingame.h"
+	if( len >= maxChunkSize ) {
+		int		sent = 0;
+		int		remaining = len;
+		char	*cmd;
+		char	buf[MAX_STRING_CHARS];
+
+		while (remaining > 0 ) {
+			if ( sent == 0 ) {
+				cmd = "bcs0";
+			}
+			else if( remaining < maxChunkSize ) {
+				cmd = "bcs2";
+			}
+			else {
+				cmd = "bcs1";
+			}
+			Q_strncpyz( buf, &sv.configstrings[index][sent],
+				maxChunkSize );
+
+			SV_SendServerCommand( client, "%s %i \"%s\"\n", cmd,
+				index, buf );
+
+			sent += (maxChunkSize - 1);
+			remaining -= (maxChunkSize - 1);
+		}
+	} else {
+		// standard cs, just send it
+		SV_SendServerCommand( client, "cs %i \"%s\"\n", index,
+			sv.configstrings[index] );
+	}
+}
+
+/*
+===============
+SV_UpdateConfigstrings
+
+Called when a client goes from CS_PRIMED to CS_ACTIVE.  Updates all
+Configstring indexes that have changed while the client was in CS_PRIMED
+===============
+*/
+void SV_UpdateConfigstrings(client_t *client)
+{
+	int index;
+
+	for( index = 0; index < MAX_CONFIGSTRINGS; index++ ) {
+		// if the CS hasn't changed since we went to CS_PRIMED, ignore
+		if(!client->csUpdated[index])
+			continue;
+
+		// do not always send server info to all clients
+		if ( index == CS_SERVERINFO && client->gentity &&
+			(client->gentity->r.svFlags & SVF_NOSERVERINFO) ) {
+			continue;
+		}
+		SV_SendConfigstring(client, index);
+		client->csUpdated[index] = qfalse;
+	}
+}
 
 /*
 ===============
@@ -23,8 +86,7 @@ SV_SetConfigstring
 ===============
 */
 void SV_SetConfigstring (int index, const char *val) {
-	int		len, i;
-	int		maxChunkSize = MAX_STRING_CHARS - 24;
+	int		i;
 	client_t	*client;
 
 	if ( index < 0 || index >= MAX_CONFIGSTRINGS ) {
@@ -50,7 +112,9 @@ void SV_SetConfigstring (int index, const char *val) {
 
 		// send the data to all relevent clients
 		for (i = 0, client = svs.clients; i < sv_maxclients->integer ; i++, client++) {
-			if ( client->state < CS_PRIMED ) {
+			if ( client->state < CS_ACTIVE ) {
+				if ( client->state == CS_PRIMED )
+					client->csUpdated[ index ] = qtrue;
 				continue;
 			}
 			// do not always send server info to all clients
@@ -58,39 +122,10 @@ void SV_SetConfigstring (int index, const char *val) {
 				continue;
 			}
 
-			len = strlen( val );
-			if( len >= maxChunkSize ) {
-				int		sent = 0;
-				int		remaining = len;
-				char	*cmd;
-				char	buf[MAX_STRING_CHARS];
-
-				while (remaining > 0 ) {
-					if ( sent == 0 ) {
-						cmd = "bcs0";
-					}
-					else if( remaining < maxChunkSize ) {
-						cmd = "bcs2";
-					}
-					else {
-						cmd = "bcs1";
-					}
-					Q_strncpyz( buf, &val[sent], maxChunkSize );
-
-					SV_SendServerCommand( client, "%s %i \"%s\"\n", cmd, index, buf );
-
-					sent += (maxChunkSize - 1);
-					remaining -= (maxChunkSize - 1);
-				}
-			} else {
-				// standard cs, just send it
-				SV_SendServerCommand( client, "cs %i \"%s\"\n", index, val );
-			}
+			SV_SendConfigstring(client, index);
 		}
 	}
 }
-
-
 
 /*
 ===============
@@ -113,52 +148,6 @@ void SV_GetConfigstring( int index, char *buffer, int bufferSize ) {
 	Q_strncpyz( buffer, sv.configstrings[index], bufferSize );
 }
 
-
-/*
-================
-SV_AddConfigstring
-
-================
-*/
-int SV_AddConfigstring (const char *name, int start, int max)
-{
-	int		i;
-	
-	if (!name || !name[0])
-	{
-		return 0;
-	}
-
-	if (name[0] == '/' || name[0] == '\\')
-	{
-#if _DEBUG
-		Com_DPrintf( "WARNING: Leading slash on '%s'\n", name);
-#endif
-		name++;
-
-		if (!name[0])
-		{
-			return 0;
-		}
-	}
-
-	for (i=1 ; i < max ; i++)
-	{
-		if (sv.configstrings[start+i][0] == 0)
-		{	// Didn't find it
-			SV_SetConfigstring ((start+i), name);
-			break;
-		}
-		else if (!Q_stricmp(sv.configstrings[start+i], name))
-		{
-			return i;
-		}
-	}
-
-	return 0;
-
-}
-
 /*
 ===============
 SV_SetUserinfo
@@ -178,8 +167,6 @@ void SV_SetUserinfo( int index, const char *val ) {
 	Q_strncpyz( svs.clients[index].name, Info_ValueForKey( val, "name" ), sizeof(svs.clients[index].name) );
 }
 
-
-
 /*
 ===============
 SV_GetUserinfo
@@ -196,7 +183,6 @@ void SV_GetUserinfo( int index, char *buffer, int bufferSize ) {
 	Q_strncpyz( buffer, svs.clients[ index ].userinfo, bufferSize );
 }
 
-
 /*
 ================
 SV_CreateBaseline
@@ -208,7 +194,7 @@ baseline will be transmitted
 */
 void SV_CreateBaseline( void ) {
 	sharedEntity_t *svent;
-	int				entnum;	
+	int				entnum;
 
 	for ( entnum = 1; entnum < sv.num_entities ; entnum++ ) {
 		svent = SV_GentityNum(entnum);
@@ -223,7 +209,6 @@ void SV_CreateBaseline( void ) {
 		sv.svEntities[entnum].baseline = svent->s;
 	}
 }
-
 
 /*
 ===============
@@ -244,7 +229,6 @@ void SV_BoundMaxClients( int minimum ) {
 	}
 }
 
-
 /*
 ===============
 SV_Startup
@@ -263,18 +247,22 @@ void SV_Startup( void ) {
 
 	svs.clients = (struct client_s *)Z_Malloc (sizeof(client_t) * sv_maxclients->integer, TAG_CLIENTS, qtrue );
 	if ( com_dedicated->integer ) {
-		svs.numSnapshotEntities = sv_maxclients->integer * PACKET_BACKUP * 64;
+		svs.numSnapshotEntities = sv_maxclients->integer * PACKET_BACKUP * MAX_SNAPSHOT_ENTITIES;
 		Cvar_Set( "r_ghoul2animsmooth", "0");
 		Cvar_Set( "r_ghoul2unsqashaftersmooth", "0");
 
 	} else {
 		// we don't need nearly as many when playing locally
-		svs.numSnapshotEntities = sv_maxclients->integer * 4 * 64;
+		svs.numSnapshotEntities = sv_maxclients->integer * 4 * MAX_SNAPSHOT_ENTITIES;
 	}
 	svs.initialized = qtrue;
 
-	Cvar_Set( "sv_running", "1" );
+	// Don't respect sv_killserver unless a server is actually running
+	if ( sv_killserver->integer ) {
+		Cvar_Set( "sv_killserver", "0" );
+	}
 
+	Cvar_Set( "sv_running", "1" );
 }
 
 /*
@@ -347,13 +335,13 @@ void SV_ChangeMaxClients( void ) {
 
 	// free the old clients on the hunk
 	Hunk_FreeTempMemory( oldClients );
-	
+
 	// allocate new snapshot entities
 	if ( com_dedicated->integer ) {
-		svs.numSnapshotEntities = sv_maxclients->integer * PACKET_BACKUP * 64;
+		svs.numSnapshotEntities = sv_maxclients->integer * PACKET_BACKUP * MAX_SNAPSHOT_ENTITIES;
 	} else {
 		// we don't need nearly as many when playing locally
-		svs.numSnapshotEntities = sv_maxclients->integer * 4 * 64;
+		svs.numSnapshotEntities = sv_maxclients->integer * 4 * MAX_SNAPSHOT_ENTITIES;
 	}
 }
 
@@ -397,14 +385,8 @@ void SV_TouchCGame(void) {
 	fileHandle_t	f;
 	char filename[MAX_QPATH];
 
-	if (Cvar_VariableValue( "vm_cgame" ))
-	{
-		Com_sprintf( filename, sizeof(filename), "vm/%s.qvm", "cgame" );
-	}
-	else
-	{
-		Com_sprintf( filename, sizeof(filename), "cgamex86.dll" );
-	}
+	Com_sprintf( filename, sizeof(filename), "cgamex86.dll" );
+
 	FS_FOpenFileRead( filename, &f, qfalse );
 	if ( f ) {
 		FS_FCloseFile( f );
@@ -417,21 +399,21 @@ void SV_SendMapChange(void)
 
 	if (svs.clients)
 	{
-		for (i=0 ; i<sv_maxclients->integer ; i++) 
+		for (i=0 ; i<sv_maxclients->integer ; i++)
 		{
-			if (svs.clients[i].state >= CS_CONNECTED) 
+			if (svs.clients[i].state >= CS_CONNECTED)
 			{
-				if ( svs.clients[i].netchan.remoteAddress.type != NA_BOT ) 
+				if ( svs.clients[i].netchan.remoteAddress.type != NA_BOT ||
+					svs.clients[i].demo.demorecording )
 				{
 					SV_SendClientMapChange( &svs.clients[i] ) ;
 				}
 			}
-		}	
+		}
 	}
 }
 
-void R_SVModelInit();
-
+extern void SV_SendClientGameState( client_t *client );
 /*
 ================
 SV_SpawnServer
@@ -441,10 +423,6 @@ clients along with it.
 This is NOT called for map_restart
 ================
 */
-extern CMiniHeap *G2VertSpaceServer;
-extern CMiniHeap CMiniHeap_singleton;
-
-extern void RE_RegisterMedia_LevelLoadBegin(const char *psMapName, ForceReload_e eForceReload);
 void SV_SpawnServer( char *server, qboolean killBots, ForceReload_e eForceReload ) {
 	int			i;
 	int			checksum;
@@ -452,12 +430,15 @@ void SV_SpawnServer( char *server, qboolean killBots, ForceReload_e eForceReload
 	char		systemInfo[16384];
 	const char	*p;
 
+	SV_StopAutoRecordDemos();
+
 	SV_SendMapChange();
 
-	RE_RegisterMedia_LevelLoadBegin(server, eForceReload);
+	re->RegisterMedia_LevelLoadBegin(server, eForceReload);
 
 	// shut down the existing game if it is running
 	SV_ShutdownGameProgs();
+	svs.gameStarted = qfalse;
 
 	Com_Printf ("------ Server Initialization ------\n");
 	Com_Printf ("Server: %s\n",server);
@@ -465,7 +446,7 @@ void SV_SpawnServer( char *server, qboolean killBots, ForceReload_e eForceReload
 /*
 Ghoul2 Insert Start
 */
- 	// de allocate the snapshot entities 
+ 	// de allocate the snapshot entities
 	if (svs.snapshotEntities)
 	{
 		delete[] svs.snapshotEntities;
@@ -483,7 +464,7 @@ Ghoul2 Insert End
 
 #ifndef DEDICATED
 	// make sure all the client stuff is unloaded
-	CL_ShutdownAll();
+	CL_ShutdownAll( qfalse );
 #endif
 
 	CM_ClearMap();
@@ -491,10 +472,10 @@ Ghoul2 Insert End
 	// clear the whole hunk because we're (re)loading the server
 	Hunk_Clear();
 
-	R_InitSkins();
-	R_InitShaders(qtrue);
+	re->InitSkins();
+	re->InitShaders(qtrue);
 
-	// init client structures and svs.numSnapshotEntities 
+	// init client structures and svs.numSnapshotEntities
 	if ( !Cvar_VariableValue("sv_running") ) {
 		SV_Startup();
 	} else {
@@ -509,7 +490,7 @@ Ghoul2 Insert End
 /*
 Ghoul2 Insert Start
 */
- 	// clear out those shaders, images and Models as long as this 
+ 	// clear out those shaders, images and Models as long as this
 	// isnt a dedicated server.
 	/*
 	if ( !com_dedicated->integer )
@@ -526,7 +507,7 @@ Ghoul2 Insert Start
 	*/
 	if (com_dedicated->integer)
 	{
-		R_SVModelInit();
+		re->SVModelInit();
 	}
 
 	SV_SendMapChange();
@@ -541,7 +522,7 @@ Ghoul2 Insert Start
 //	svs.snapshotEntities = (struct entityState_s *)Hunk_Alloc( sizeof(entityState_t)*svs.numSnapshotEntities, h_high );
 	svs.nextSnapshotEntities = 0;
 
-	// allocate the snapshot entities 
+	// allocate the snapshot entities
 	svs.snapshotEntities = new entityState_s[svs.numSnapshotEntities];
 	// we CAN afford to do this here, since we know the STL vectors in Ghoul2 are empty
 	memset(svs.snapshotEntities, 0, sizeof(entityState_t)*svs.numSnapshotEntities);
@@ -559,6 +540,13 @@ Ghoul2 Insert End
 	Cvar_Set( "nextmap", "map_restart 0");
 //	Cvar_Set( "nextmap", va("map %s", server) );
 
+	for (i=0 ; i<sv_maxclients->integer ; i++) {
+		// save when the server started for each client already connected
+		if (svs.clients[i].state >= CS_CONNECTED) {
+			svs.clients[i].oldServerTime = svs.time;
+		}
+	}
+
 	// wipe the entire per-level structure
 	SV_ClearServer();
 	for ( i = 0 ; i < MAX_CONFIGSTRINGS ; i++ ) {
@@ -566,7 +554,7 @@ Ghoul2 Insert End
 	}
 
 	//rww - RAGDOLL_BEGIN
-	G2API_SetTime(svs.time,0);
+	re->G2API_SetTime(sv.time,0);
 	//rww - RAGDOLL_END
 
 	// make sure we are not paused
@@ -588,12 +576,14 @@ Ghoul2 Insert End
 
 	// serverid should be different each time
 	sv.serverId = com_frameTime;
-	sv.restartedServerId = sv.serverId;
+	sv.restartedServerId = sv.serverId; // I suppose the init here is just to be safe
 	Cvar_Set( "sv_serverid", va("%i", sv.serverId ) );
+
+	time( &sv.realMapTimeStarted );
 
 	// clear physics interaction links
 	SV_ClearWorld ();
-	
+
 	// media configstring setting should be done during
 	// the loading stage, so connected clients don't have
 	// to load during actual gameplay
@@ -608,14 +598,15 @@ Ghoul2 Insert End
 	// run a few frames to allow everything to settle
 	for ( i = 0 ;i < 3 ; i++ ) {
 		//rww - RAGDOLL_BEGIN
-		G2API_SetTime(svs.time,0);
+		re->G2API_SetTime(sv.time,0);
 		//rww - RAGDOLL_END
-		VM_Call( gvm, GAME_RUN_FRAME, svs.time );
-		SV_BotFrame( svs.time );
+		GVM_RunFrame( sv.time );
+		SV_BotFrame( sv.time );
+		sv.time += 100;
 		svs.time += 100;
 	}
 	//rww - RAGDOLL_BEGIN
-	G2API_SetTime(svs.time,0);
+	re->G2API_SetTime(sv.time,0);
 	//rww - RAGDOLL_END
 
 	// create a baseline for more efficient communications
@@ -638,7 +629,7 @@ Ghoul2 Insert End
 			}
 
 			// connect the client again
-			denied = (char *)VM_ExplicitArgPtr( gvm, VM_Call( gvm, GAME_CLIENT_CONNECT, i, qfalse, isBot ) );	// firstTime = qfalse
+			denied = GVM_ClientConnect( i, qfalse, isBot );	// firstTime = qfalse
 			if ( denied ) {
 				// this generally shouldn't happen, because the client
 				// was connected before the level change
@@ -662,18 +653,19 @@ Ghoul2 Insert End
 					client->deltaMessage = -1;
 					client->nextSnapshotTime = svs.time;	// generate a snapshot immediately
 
-					VM_Call( gvm, GAME_CLIENT_BEGIN, i );
+					GVM_ClientBegin( i );
 				}
 			}
 		}
-	}	
+	}
 
 	// run another frame to allow things to look at all the players
-	VM_Call( gvm, GAME_RUN_FRAME, svs.time );
-	SV_BotFrame( svs.time );
+	GVM_RunFrame( sv.time );
+	SV_BotFrame( sv.time );
+	sv.time += 100;
 	svs.time += 100;
 	//rww - RAGDOLL_BEGIN
-	G2API_SetTime(svs.time,0);
+	re->G2API_SetTime(sv.time,0);
 	//rww - RAGDOLL_END
 
 	if ( sv_pure->integer ) {
@@ -729,6 +721,16 @@ Ghoul2 Insert End
 		CL_StartHunkUsers();
 	}
 	*/
+
+	for ( client_t *client = svs.clients; client - svs.clients < sv_maxclients->integer; client++) {
+		// bots will not request gamestate, so it must be manually sent
+		// cannot do this above where it says it will because mapname is not set at that time
+		if ( client->netchan.remoteAddress.type == NA_BOT && client->demo.demorecording ) {
+			SV_SendClientGameState( client );
+		}
+	}
+
+	SV_BeginAutoRecordDemos();
 }
 
 
@@ -741,6 +743,159 @@ Only called at main exe startup, not for each game
 */
 void SV_BotInitBotLib(void);
 
+#ifdef DEDICATED
+
+#define G2_VERT_SPACE_SERVER_SIZE 256
+IHeapAllocator *G2VertSpaceServer = NULL;
+CMiniHeap IHeapAllocator_singleton(G2_VERT_SPACE_SERVER_SIZE * 1024);
+
+
+/*
+================
+CL_RefPrintf
+
+DLL glue
+================
+*/
+#define	MAXPRINTMSG	4096
+void QDECL SV_RefPrintf( int print_level, const char *fmt, ...) {
+	va_list		argptr;
+	char		msg[MAXPRINTMSG];
+
+	va_start (argptr,fmt);
+	Q_vsnprintf(msg, sizeof(msg), fmt, argptr);
+	va_end (argptr);
+
+	if ( print_level == PRINT_ALL ) {
+		Com_Printf ("%s", msg);
+	} else if ( print_level == PRINT_WARNING ) {
+		Com_Printf (S_COLOR_YELLOW "%s", msg);		// yellow
+	} else if ( print_level == PRINT_DEVELOPER ) {
+		Com_DPrintf (S_COLOR_RED "%s", msg);		// red
+	}
+}
+
+qboolean Com_TheHunkMarkHasBeenMade(void);
+
+//qcommon/vm.cpp
+extern vm_t *currentVM;
+
+//qcommon/cm_load.cpp
+extern void *gpvCachedMapDiskImage;
+extern qboolean gbUsingCachedMapDataRightNow;
+
+static char *GetSharedMemory( void ) { return sv.mSharedMemory; }
+static vm_t *GetCurrentVM( void ) { return currentVM; }
+static void *CM_GetCachedMapDiskImage( void ) { return gpvCachedMapDiskImage; }
+static void CM_SetCachedMapDiskImage( void *ptr ) { gpvCachedMapDiskImage = ptr; }
+static void CM_SetUsingCache( qboolean usingCache ) { gbUsingCachedMapDataRightNow = usingCache; }
+
+//server stuff D:
+extern void SV_GetConfigstring( int index, char *buffer, int bufferSize );
+extern void SV_SetConfigstring( int index, const char *val );
+
+static IHeapAllocator *GetG2VertSpaceServer( void ) {
+	return G2VertSpaceServer;
+}
+
+refexport_t	*re = NULL;
+
+static void SV_InitRef( void ) {
+	static refimport_t ri;
+	refexport_t *ret;
+
+	Com_Printf( "----- Initializing Renderer ----\n" );
+
+	memset( &ri, 0, sizeof( ri ) );
+
+	//set up the import table
+	ri.Printf = SV_RefPrintf;
+	ri.Error = Com_Error;
+	ri.OPrintf = Com_OPrintf;
+	ri.Milliseconds = Sys_Milliseconds2; //FIXME: unix+mac need this
+	ri.Hunk_AllocateTempMemory = Hunk_AllocateTempMemory;
+	ri.Hunk_FreeTempMemory = Hunk_FreeTempMemory;
+	ri.Hunk_Alloc = Hunk_Alloc;
+	ri.Hunk_MemoryRemaining = Hunk_MemoryRemaining;
+	ri.Z_Malloc = Z_Malloc;
+	ri.Z_Free = Z_Free;
+	ri.Z_MemSize = Z_MemSize;
+	ri.Z_MorphMallocTag = Z_MorphMallocTag;
+	ri.Cmd_ExecuteString = Cmd_ExecuteString;
+	ri.Cmd_Argc = Cmd_Argc;
+	ri.Cmd_Argv = Cmd_Argv;
+	ri.Cmd_ArgsBuffer = Cmd_ArgsBuffer;
+	ri.Cmd_AddCommand = Cmd_AddCommand;
+	ri.Cmd_RemoveCommand = Cmd_RemoveCommand;
+	ri.Cvar_Set = Cvar_Set;
+	ri.Cvar_Get = Cvar_Get;
+	ri.Cvar_VariableStringBuffer = Cvar_VariableStringBuffer;
+	ri.Cvar_VariableString = Cvar_VariableString;
+	ri.Cvar_VariableValue = Cvar_VariableValue;
+	ri.Cvar_VariableIntegerValue = Cvar_VariableIntegerValue;
+	ri.Sys_LowPhysicalMemory = Sys_LowPhysicalMemory;
+	ri.SE_GetString = SE_GetString;
+	ri.FS_FreeFile = FS_FreeFile;
+	ri.FS_FreeFileList = FS_FreeFileList;
+	ri.FS_Read = FS_Read;
+	ri.FS_ReadFile = FS_ReadFile;
+	ri.FS_FCloseFile = FS_FCloseFile;
+	ri.FS_FOpenFileRead = FS_FOpenFileRead;
+	ri.FS_FOpenFileWrite = FS_FOpenFileWrite;
+	ri.FS_FOpenFileByMode = FS_FOpenFileByMode;
+	ri.FS_FileExists = FS_FileExists;
+	ri.FS_FileIsInPAK = FS_FileIsInPAK;
+	ri.FS_ListFiles = FS_ListFiles;
+	ri.FS_Write = FS_Write;
+	ri.FS_WriteFile = FS_WriteFile;
+	ri.CM_BoxTrace = CM_BoxTrace;
+	ri.CM_DrawDebugSurface = CM_DrawDebugSurface;
+//	ri.CM_CullWorldBox = CM_CullWorldBox;
+//	ri.CM_TerrainPatchIterate = CM_TerrainPatchIterate;
+//	ri.CM_RegisterTerrain = CM_RegisterTerrain;
+//	ri.CM_ShutdownTerrain = CM_ShutdownTerrain;
+	ri.CM_ClusterPVS = CM_ClusterPVS;
+	ri.CM_LeafArea = CM_LeafArea;
+	ri.CM_LeafCluster = CM_LeafCluster;
+	ri.CM_PointLeafnum = CM_PointLeafnum;
+	ri.CM_PointContents = CM_PointContents;
+	ri.Com_TheHunkMarkHasBeenMade = Com_TheHunkMarkHasBeenMade;
+//	ri.S_RestartMusic = S_RestartMusic;
+//	ri.SND_RegisterAudio_LevelLoadEnd = SND_RegisterAudio_LevelLoadEnd;
+//	ri.CIN_RunCinematic = CIN_RunCinematic;
+//	ri.CIN_PlayCinematic = CIN_PlayCinematic;
+//	ri.CIN_UploadCinematic = CIN_UploadCinematic;
+//	ri.CL_WriteAVIVideoFrame = CL_WriteAVIVideoFrame;
+
+	// g2 data access
+	ri.GetSharedMemory = GetSharedMemory;
+
+	// (c)g vm callbacks
+	ri.GetCurrentVM = GetCurrentVM;
+//	ri.CGVMLoaded = CGVMLoaded;
+//	ri.CGVM_RagCallback = CGVM_RagCallback;
+
+	// ugly win32 backend
+	ri.CM_GetCachedMapDiskImage = CM_GetCachedMapDiskImage;
+	ri.CM_SetCachedMapDiskImage = CM_SetCachedMapDiskImage;
+	ri.CM_SetUsingCache = CM_SetUsingCache;
+
+	//FIXME: Might have to do something about this...
+	ri.GetG2VertSpaceServer = GetG2VertSpaceServer;
+	G2VertSpaceServer = &IHeapAllocator_singleton;
+
+	ret = GetRefAPI( REF_API_VERSION, &ri );
+
+//	Com_Printf( "-------------------------------\n");
+
+	if ( !ret ) {
+		Com_Error (ERR_FATAL, "Couldn't initialize refresh" );
+	}
+
+	re = ret;
+}
+#endif
+
 void SV_Init (void) {
 	SV_AddOperatorCommands ();
 
@@ -749,12 +904,12 @@ void SV_Init (void) {
 	Cvar_Get ("fraglimit", "20", CVAR_SERVERINFO);
 	Cvar_Get ("timelimit", "0", CVAR_SERVERINFO);
 	Cvar_Get ("capturelimit", "0", CVAR_SERVERINFO);
-	
+
 	// Get these to establish them and to make sure they have a default before the menus decide to stomp them.
 	Cvar_Get ("g_maxHolocronCarry", "3", CVAR_SERVERINFO);
 	Cvar_Get ("g_privateDuel", "1", CVAR_SERVERINFO );
 	Cvar_Get ("g_saberLocking", "1", CVAR_SERVERINFO );
-	Cvar_Get ("g_maxForceRank", "6", CVAR_SERVERINFO );
+	Cvar_Get ("g_maxForceRank", "7", CVAR_SERVERINFO );
 	Cvar_Get ("duel_fraglimit", "10", CVAR_SERVERINFO);
 	Cvar_Get ("g_forceBasedTeams", "0", CVAR_SERVERINFO);
 	Cvar_Get ("g_duelWeaponDisable", "1", CVAR_SERVERINFO);
@@ -765,6 +920,7 @@ void SV_Init (void) {
 	Cvar_Get ("protocol", va("%i", PROTOCOL_VERSION), CVAR_SERVERINFO | CVAR_ROM);
 	sv_mapname = Cvar_Get ("mapname", "nomap", CVAR_SERVERINFO | CVAR_ROM);
 	sv_privateClients = Cvar_Get ("sv_privateClients", "0", CVAR_SERVERINFO);
+	Cvar_CheckRange( sv_privateClients, 0, MAX_CLIENTS, qtrue );
 	sv_hostname = Cvar_Get ("sv_hostname", "*Jedi*", CVAR_SERVERINFO | CVAR_ARCHIVE );
 	sv_maxclients = Cvar_Get ("sv_maxclients", "8", CVAR_SERVERINFO | CVAR_LATCH);
 	sv_maxRate = Cvar_Get ("sv_maxRate", "0", CVAR_ARCHIVE | CVAR_SERVERINFO );
@@ -774,11 +930,7 @@ void SV_Init (void) {
 	// systeminfo
 	Cvar_Get ("sv_cheats", "1", CVAR_SYSTEMINFO | CVAR_ROM );
 	sv_serverid = Cvar_Get ("sv_serverid", "0", CVAR_SYSTEMINFO | CVAR_ROM );
-#ifndef DLL_ONLY // bk010216 - for DLL-only servers
-	sv_pure = Cvar_Get ("sv_pure", "1", CVAR_SYSTEMINFO );
-#else
-	sv_pure = Cvar_Get ("sv_pure", "0", CVAR_SYSTEMINFO | CVAR_INIT | CVAR_ROM );
-#endif
+	sv_pure = Cvar_Get ("sv_pure", "0", CVAR_SYSTEMINFO );
 	Cvar_Get ("sv_paks", "", CVAR_SYSTEMINFO | CVAR_ROM );
 	Cvar_Get ("sv_pakNames", "", CVAR_SYSTEMINFO | CVAR_ROM );
 	Cvar_Get ("sv_referencedPaks", "", CVAR_SYSTEMINFO | CVAR_ROM );
@@ -787,25 +939,35 @@ void SV_Init (void) {
 	// server vars
 	sv_rconPassword = Cvar_Get ("rconPassword", "", CVAR_TEMP );
 	sv_privatePassword = Cvar_Get ("sv_privatePassword", "", CVAR_TEMP );
-	sv_fps = Cvar_Get ("sv_fps", "20", CVAR_TEMP );
+	sv_snapsMin = Cvar_Get ("sv_snapsMin", "10", CVAR_ARCHIVE ); // 1 <=> sv_snapsMax
+	sv_snapsMax = Cvar_Get ("sv_snapsMax", "40", CVAR_ARCHIVE ); // sv_snapsMin <=> sv_fps
+	sv_fps = Cvar_Get ("sv_fps", "40", CVAR_SERVERINFO );
 	sv_timeout = Cvar_Get ("sv_timeout", "200", CVAR_TEMP );
 	sv_zombietime = Cvar_Get ("sv_zombietime", "2", CVAR_TEMP );
 	Cvar_Get ("nextmap", "", CVAR_TEMP );
 
 	sv_allowDownload = Cvar_Get ("sv_allowDownload", "0", CVAR_SERVERINFO);
 	sv_master[0] = Cvar_Get ("sv_master1", MASTER_SERVER_NAME, 0 );
-	sv_master[1] = Cvar_Get ("sv_master2", "", CVAR_ARCHIVE );
-	sv_master[2] = Cvar_Get ("sv_master3", "", CVAR_ARCHIVE );
-	sv_master[3] = Cvar_Get ("sv_master4", "", CVAR_ARCHIVE );
-	sv_master[4] = Cvar_Get ("sv_master5", "", CVAR_ARCHIVE );
+	sv_master[1] = Cvar_Get("sv_master2", JKHUB_MASTER_SERVER_NAME, 0);
+	for(int index = 2; index < MAX_MASTER_SERVERS; index++)
+		sv_master[index] = Cvar_Get(va("sv_master%d", index + 1), "", CVAR_ARCHIVE);
 	sv_reconnectlimit = Cvar_Get ("sv_reconnectlimit", "3", 0);
 	sv_showghoultraces = Cvar_Get ("sv_showghoultraces", "0", 0);
 	sv_showloss = Cvar_Get ("sv_showloss", "0", 0);
 	sv_padPackets = Cvar_Get ("sv_padPackets", "0", 0);
 	sv_killserver = Cvar_Get ("sv_killserver", "0", 0);
 	sv_mapChecksum = Cvar_Get ("sv_mapChecksum", "", CVAR_ROM);
+	sv_lanForceRate = Cvar_Get ("sv_lanForceRate", "1", CVAR_ARCHIVE );
+
+	sv_filterCommands = Cvar_Get( "sv_filterCommands", "0", CVAR_ARCHIVE );
 
 //	sv_debugserver = Cvar_Get ("sv_debugserver", "0", 0);
+
+	sv_autoDemo = Cvar_Get( "sv_autoDemo", "0", CVAR_ARCHIVE | CVAR_SERVERINFO );
+	sv_autoDemoBots = Cvar_Get( "sv_autoDemoBots", "0", CVAR_ARCHIVE );
+	sv_autoDemoMaxMaps = Cvar_Get( "sv_autoDemoMaxMaps", "0", CVAR_ARCHIVE );
+
+	sv_blockJumpSelect = Cvar_Get( "sv_blockJumpSelect", "1", CVAR_ARCHIVE );
 
 	// initialize bot cvars so they are listed and can be set before loading the botlib
 	SV_BotInitCvars();
@@ -815,7 +977,9 @@ void SV_Init (void) {
 
 	// Only allocated once, no point in moving it around and fragmenting
 	// create a heap for Ghoul2 to use for game side model vertex transforms used in collision detection
-	G2VertSpaceServer = &CMiniHeap_singleton;
+#ifdef DEDICATED
+	SV_InitRef();
+#endif
 }
 
 
@@ -832,7 +996,7 @@ to totally exit after returning from this function.
 void SV_FinalMessage( char *message ) {
 	int			i, j;
 	client_t	*cl;
-	
+
 	// send it twice, ignoring rate
 	for ( j = 0 ; j < 2 ; j++ ) {
 		for (i=0, cl = svs.clients ; i < sv_maxclients->integer ; i++, cl++) {
@@ -859,9 +1023,9 @@ Called when each game quits,
 before Sys_Quit or Sys_Error
 ================
 */
-void SV_Shutdown( char *finalmsg ) 
+void SV_Shutdown( char *finalmsg )
 {
-	if ( !com_sv_running || !com_sv_running->integer ) 
+	if ( !com_sv_running || !com_sv_running->integer )
 	{
 		return;
 	}
@@ -875,10 +1039,11 @@ void SV_Shutdown( char *finalmsg )
 	SV_RemoveOperatorCommands();
 	SV_MasterShutdown();
 	SV_ShutdownGameProgs();
+	svs.gameStarted = qfalse;
 /*
 Ghoul2 Insert Start
 */
- 	// de allocate the snapshot entities 
+ 	// de allocate the snapshot entities
 	if (svs.snapshotEntities)
 	{
 		delete[] svs.snapshotEntities;
@@ -901,6 +1066,6 @@ Ghoul2 Insert Start
 //	Com_Printf( "---------------------------\n" );
 
 	// disconnect any local clients
-	CL_Disconnect( qfalse );
+	if( sv_killserver->integer != 2 )
+		CL_Disconnect( qfalse );
 }
-

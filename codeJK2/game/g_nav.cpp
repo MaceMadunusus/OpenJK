@@ -1,3 +1,21 @@
+/*
+This file is part of Jedi Knight 2.
+
+    Jedi Knight 2 is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Knight 2 is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Knight 2.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 // leave this line at the top for all g_xxxx.cpp files...
 #include "g_headers.h"
 
@@ -1252,7 +1270,7 @@ void SP_waypoint ( gentity_t *ent )
 				assert(0 && "Waypoint in solid!");
 #ifndef FINAL_BUILD
 				if (!g_entities[ENTITYNUM_WORLD].s.radius){	//not a region
-					G_Error("Waypoint %s at %s in solid!\n", ent->targetname, vtos(ent->currentOrigin));
+					G_Error("Waypoint %s at %s in solid!", ent->targetname, vtos(ent->currentOrigin));
 				}
 #endif
 				G_FreeEntity(ent);
@@ -1298,7 +1316,7 @@ void SP_waypoint_small (gentity_t *ent)
 				assert(0);
 #ifndef FINAL_BUILD
 				if (!g_entities[ENTITYNUM_WORLD].s.radius){	//not a region
-					G_Error("Waypoint_small %s at %s in solid!\n", ent->targetname, vtos(ent->currentOrigin));
+					G_Error("Waypoint_small %s at %s in solid!", ent->targetname, vtos(ent->currentOrigin));
 				}
 #endif
 				G_FreeEntity(ent);
@@ -1344,7 +1362,7 @@ void SP_waypoint_navgoal( gentity_t *ent )
 		assert(0);
 #ifndef FINAL_BUILD
 		if (!g_entities[ENTITYNUM_WORLD].s.radius){	//not a region
-			G_Error("Waypoint_navgoal %s at %s in solid!\n", ent->targetname, vtos(ent->currentOrigin));
+			G_Error("Waypoint_navgoal %s at %s in solid!", ent->targetname, vtos(ent->currentOrigin));
 		}
 #endif
 	}
@@ -1378,7 +1396,7 @@ void SP_waypoint_navgoal_8( gentity_t *ent )
 		gi.Printf(S_COLOR_RED"ERROR: Waypoint_navgoal_8 %s at %s in solid!\n", ent->targetname, vtos(ent->currentOrigin));
 #ifndef FINAL_BUILD
 		if (!g_entities[ENTITYNUM_WORLD].s.radius){	//not a region
-			G_Error("Waypoint_navgoal_8 %s at %s in solid!\n", ent->targetname, vtos(ent->currentOrigin));
+			G_Error("Waypoint_navgoal_8 %s at %s in solid!", ent->targetname, vtos(ent->currentOrigin));
 		}
 #endif
 		assert(0);
@@ -1414,7 +1432,7 @@ void SP_waypoint_navgoal_4( gentity_t *ent )
 		gi.Printf(S_COLOR_RED"ERROR: Waypoint_navgoal_4 %s at %s in solid!\n", ent->targetname, vtos(ent->currentOrigin));
 #ifndef FINAL_BUILD
 		if (!g_entities[ENTITYNUM_WORLD].s.radius){	//not a region
-			G_Error("Waypoint_navgoal_4 %s at %s in solid!\n", ent->targetname, vtos(ent->currentOrigin));
+			G_Error("Waypoint_navgoal_4 %s at %s in solid!", ent->targetname, vtos(ent->currentOrigin));
 		}
 #endif
 		assert(0);
@@ -1450,7 +1468,7 @@ void SP_waypoint_navgoal_2( gentity_t *ent )
 		gi.Printf(S_COLOR_RED"ERROR: Waypoint_navgoal_2 %s at %s in solid!\n", ent->targetname, vtos(ent->currentOrigin));
 #ifndef FINAL_BUILD
 		if (!g_entities[ENTITYNUM_WORLD].s.radius){	//not a region
-			G_Error("Waypoint_navgoal_2 %s at %s in solid!\n", ent->targetname, vtos(ent->currentOrigin));
+			G_Error("Waypoint_navgoal_2 %s at %s in solid!", ent->targetname, vtos(ent->currentOrigin));
 		}
 #endif
 		assert(0);
@@ -1486,7 +1504,7 @@ void SP_waypoint_navgoal_1( gentity_t *ent )
 		gi.Printf(S_COLOR_RED"ERROR: Waypoint_navgoal_1 %s at %s in solid!\n", ent->targetname, vtos(ent->currentOrigin));
 #ifndef FINAL_BUILD
 		if (!g_entities[ENTITYNUM_WORLD].s.radius){	//not a region
-			G_Error("Waypoint_navgoal_1 %s at %s in solid!\n", ent->targetname, vtos(ent->currentOrigin));
+			G_Error("Waypoint_navgoal_1 %s at %s in solid!", ent->targetname, vtos(ent->currentOrigin));
 		}
 #endif
 		assert(0);
@@ -1655,7 +1673,7 @@ void NAV_StoreWaypoint( gentity_t *ent )
 
 	if ( numStoredWaypoints >= MAX_STORED_WAYPOINTS )
 	{
-		G_Error( "Too many waypoints!  (%d > %d)\n", numStoredWaypoints, MAX_STORED_WAYPOINTS );
+		G_Error( "Too many waypoints!  (%d > %d)", numStoredWaypoints, MAX_STORED_WAYPOINTS );
 		return;
 	}
 	if ( ent->targetname )

@@ -1,5 +1,25 @@
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 #ifndef __WP_SABER_H
 #define __WP_SABER_H
+
+#include "b_public.h"
 
 #define ARMOR_EFFECT_TIME	500
 
@@ -58,7 +78,7 @@ typedef enum
 	LOCK_FORCE_DRAIN
 } sabersLockMode_t;
 
-typedef enum
+enum
 {
 	SABERLOCK_TOP,
 	SABERLOCK_SIDE,
@@ -69,7 +89,7 @@ typedef enum
 	SABERLOCK_LOSE
 };
 
-typedef enum
+enum
 {
 	DIR_RIGHT,
 	DIR_LEFT,
@@ -142,13 +162,13 @@ extern void ForceSpeed( gentity_t *self, int duration = 0 );
 extern float forceSpeedValue[];
 extern float forceSpeedRangeMod[];
 extern float forceSpeedFOVMod[];
-extern char *saberColorStringForColor[];
+extern const char *saberColorStringForColor[];
 #define FORCE_SPEED_DURATION 10000.0f
 #define FORCE_RAGE_DURATION 10000.0f
 
 #define MASK_FORCE_PUSH (MASK_OPAQUE|CONTENTS_SOLID)
 
-typedef enum
+enum
 {
 	FORCE_LEVEL_0,
 	FORCE_LEVEL_1,
@@ -159,7 +179,7 @@ typedef enum
 #define	FORCE_LEVEL_4 (FORCE_LEVEL_3+1)
 #define	FORCE_LEVEL_5 (FORCE_LEVEL_4+1)
 
-typedef enum
+enum
 {
 	FJ_FORWARD,
 	FJ_BACKWARD,
@@ -427,7 +447,7 @@ typedef enum {
 
 typedef struct
 {
-	char *name;
+	const char *name;
 	int animToUse;
 	int	startQuad;
 	int	endQuad;

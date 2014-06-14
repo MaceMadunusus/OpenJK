@@ -1,3 +1,21 @@
+/*
+This file is part of Jedi Knight 2.
+
+    Jedi Knight 2 is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Knight 2 is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Knight 2.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 // leave this line at the top for all g_xxxx.cpp files...
 #include "g_headers.h"
 
@@ -167,6 +185,36 @@ void SP_misc_model_ghoul( gentity_t *ent )
 	ent->s.modelindex = G_ModelIndex( ent->model );
 	gi.G2API_InitGhoul2Model(ent->ghoul2, ent->model, ent->s.modelindex, NULL, NULL, 0, 0);
 	ent->s.radius = 50;
+
+	G_SetOrigin( ent, ent->s.origin );
+	G_SetAngles( ent, ent->s.angles );
+
+	qboolean bHasScale = G_SpawnVector( "modelscale_vec", "1 1 1", ent->s.modelScale );
+	if ( !bHasScale ) {
+		float temp;
+		G_SpawnFloat( "modelscale", "0", &temp );
+		if ( temp != 0.0f ) {
+			ent->s.modelScale[0] = ent->s.modelScale[1] = ent->s.modelScale[2] = temp;
+			bHasScale = qtrue;
+		}
+	}
+	if ( bHasScale ) {
+		//scale the x axis of the bbox up.
+		ent->maxs[0] *= ent->s.modelScale[0];
+		ent->mins[0] *= ent->s.modelScale[0];
+
+		//scale the y axis of the bbox up.
+		ent->maxs[1] *= ent->s.modelScale[1];
+		ent->mins[1] *= ent->s.modelScale[1];
+
+		//scale the z axis of the bbox up and adjust origin accordingly
+		ent->maxs[2] *= ent->s.modelScale[2];
+		float oldMins2 = ent->mins[2];
+		ent->mins[2] *= ent->s.modelScale[2];
+		ent->s.origin[2] += (oldMins2 - ent->mins[2]);
+	}
+
+	gi.linkentity (ent);
 #else
 	char name1[200] = "models/players/kyle/model.glm";
 	ent->s.modelindex = G_ModelIndex( name1 );
@@ -778,7 +826,7 @@ void SP_misc_model_cargo_small( gentity_t *ent )
 
 	G_SpawnInt( "health", "25", &ent->health );
 
-	SetMiscModelDefaults( ent, useF_NULL, "11", CONTENTS_SOLID|CONTENTS_OPAQUE|CONTENTS_BODY|CONTENTS_MONSTERCLIP|CONTENTS_BOTCLIP, NULL, qtrue, NULL );
+	SetMiscModelDefaults( ent, useF_NULL, "11", CONTENTS_SOLID|CONTENTS_OPAQUE|CONTENTS_BODY|CONTENTS_MONSTERCLIP|CONTENTS_BOTCLIP, 0, qtrue, qfalse );
 	ent->s.modelindex2 = G_ModelIndex("/models/map_objects/kejim/cargo_small.md3");	// Precache model
 
 	// we only take damage from a heavy weapon class missile

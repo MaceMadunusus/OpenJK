@@ -1,11 +1,29 @@
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 #ifndef __UI_LOCAL_H__
 #define __UI_LOCAL_H__
 
 #include <string.h>
 #include <limits.h>
 
-#include "../game/q_shared.h"
-#include "../renderer/tr_types.h"
+#include "../qcommon/q_shared.h"
+#include "../rd-common/tr_types.h"
 #include "../qcommon/qcommon.h"
 #include "ui_public.h"
 #include "ui_shared.h"
@@ -52,7 +70,7 @@ extern void UI_DataPadMenu(void);
 // ui_connect.c
 //
 extern void UI_DrawConnect( const char *servername, const char * updateInfoString );
-extern void UI_UpdateConnectionString( char *string );
+extern void UI_UpdateConnectionString( const char *string );
 extern void UI_UpdateConnectionMessageString( char *string );
 
 
@@ -161,7 +179,7 @@ typedef struct {
 	qhandle_t litThrowableIcon;
 	qhandle_t unlitThrowableIcon;
 	short		movesTitleIndex;
-	char		*movesBaseAnim;
+	const char	*movesBaseAnim;
 	int			moveAnimTime;
 	int			languageCount;
 	int			languageCountIndex;
@@ -206,9 +224,6 @@ void			trap_R_RenderScene( const refdef_t *fd );
 void			trap_S_StopSounds( void );
 sfxHandle_t		trap_S_RegisterSound( const char *sample, qboolean compressed );
 void			trap_S_StartLocalSound( sfxHandle_t sfx, int channelNum );
-#ifndef _XBOX
-int				PASSFLOAT( float x );
-#endif
 
 
 

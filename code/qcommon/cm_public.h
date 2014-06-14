@@ -1,14 +1,28 @@
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 #ifndef __CM_PUBLIC_H__
 #define __CM_PUBLIC_H__
 
 #include "qfiles.h"
 
 qboolean CM_DeleteCachedMap(qboolean bGuaranteedOkToDelete);
-#ifdef _XBOX
-void		CM_LoadMap( const char *name, qboolean clientload, int *checksum);
-#else
 void		CM_LoadMap( const char *name, qboolean clientload, int *checksum, qboolean subBSP);
-#endif
 void		CM_ClearMap( void );
 int			CM_TotalMapContents();
 
@@ -18,7 +32,6 @@ clipHandle_t CM_TempBoxModel( const vec3_t mins, const vec3_t maxs );//, const i
 int		CM_ModelContents( clipHandle_t model, int subBSPIndex );
 
 
-int			CM_NumClusters (void);
 int			CM_NumInlineModels( void );
 char		*CM_EntityString (void);
 char		*CM_SubBSPEntityString (int index);
@@ -37,11 +50,7 @@ void		CM_TransformedBoxTrace( trace_t *results, const vec3_t start, const vec3_t
 						  clipHandle_t model, int brushmask,
 						  const vec3_t origin, const vec3_t angles);
 
-#ifdef _XBOX
-const byte	*CM_ClusterPVS (int cluster);
-#else
 byte		*CM_ClusterPVS (int cluster);
-#endif
 
 int			CM_PointLeafnum( const vec3_t p );
 

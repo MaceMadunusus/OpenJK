@@ -1,3 +1,21 @@
+/*
+This file is part of Jedi Knight 2.
+
+    Jedi Knight 2 is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Knight 2 is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Knight 2.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 // leave this line at the top of all AI_xxxx.cpp files for PCH reasons...
 #include "g_headers.h"
 
@@ -349,14 +367,14 @@ static void Sniper_CheckMoveState( void )
 		if ( NAV_HitNavGoal( NPC->currentOrigin, NPC->mins, NPC->maxs, NPCInfo->goalEntity->currentOrigin, 16, FlyingCreature( NPC ) ) || 
 			( NPCInfo->squadState == SQUAD_SCOUT && enemyLOS && enemyDist <= 10000 ) )
 		{
-			int	newSquadState = SQUAD_STAND_AND_SHOOT;
+			//int	newSquadState = SQUAD_STAND_AND_SHOOT;
 			//we got where we wanted to go, set timers based on why we were running
 			switch ( NPCInfo->squadState )
 			{
 			case SQUAD_RETREAT://was running away
 				TIMER_Set( NPC, "duck", (NPC->max_health - NPC->health) * 100 );
 				TIMER_Set( NPC, "hideTime", Q_irand( 3000, 7000 ) );
-				newSquadState = SQUAD_COVER;
+				//newSquadState = SQUAD_COVER;
 				break;
 			case SQUAD_TRANSITION://was heading for a combat point
 				TIMER_Set( NPC, "hideTime", Q_irand( 2000, 4000 ) );

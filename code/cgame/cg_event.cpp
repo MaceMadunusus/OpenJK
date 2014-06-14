@@ -1,13 +1,30 @@
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 // cg_event.c -- handle entity events at snapshot or playerstate transitions
 
 // this line must stay at top so the whole PCH thing works...
 #include "cg_headers.h"
 
-//#include "cg_local.h"
 #include "cg_media.h"
 #include "FxScheduler.h"
 
-#include "..\game\anims.h"
+#include "../game/anims.h"
 
 extern qboolean CG_TryPlayCustomSound( vec3_t origin, int entityNum, soundChannel_t channel, const char *soundName, int customSoundSet );
 extern void FX_KothosBeam( vec3_t start, vec3_t end );
@@ -15,7 +32,7 @@ extern void FX_KothosBeam( vec3_t start, vec3_t end );
 //==========================================================================
 
 qboolean CG_IsFemale( const char *infostring ) {
-	char		*sex;
+	const char		*sex;
 
 	sex = Info_ValueForKey( infostring, "s" );
 	if (sex[0] == 'f' || sex[0] == 'F')
@@ -589,9 +606,9 @@ void CG_EntityEvent( centity_t *cent, vec3_t position ) {
 			int disintPW = es->eventParm;
 			int disintEffect = 0;
 			int disintLength = 0;
-			qhandle_t disintSound1 = NULL;
-			qhandle_t disintSound2 = NULL;
-			qhandle_t disintSound3 = NULL;
+			qhandle_t disintSound1 = NULL_HANDLE;
+			qhandle_t disintSound2 = NULL_HANDLE;
+			qhandle_t disintSound3 = NULL_HANDLE;
 
 			switch( disintPW )
 			{

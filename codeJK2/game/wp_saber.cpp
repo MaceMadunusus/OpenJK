@@ -1,3 +1,21 @@
+/*
+This file is part of Jedi Knight 2.
+
+    Jedi Knight 2 is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Knight 2 is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Knight 2.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 // leave this line at the top for all g_xxxx.cpp files...
 #include "g_headers.h"
 
@@ -9,6 +27,7 @@
 #include "bg_local.h"			   
 #include "g_functions.h"
 #include "wp_saber.h"
+#include "../../code/qcommon/tri_coll_test.h"
 
 #define MAX_SABER_VICTIMS 16
 static int		victimEntityNum[MAX_SABER_VICTIMS];
@@ -254,17 +273,17 @@ void G_CreateG2AttachedWeaponModel( gentity_t *ent, const char *psWeaponModel )
 		ent->weaponModel = -1;
 		return;
 	}
-	char weaponModel[64];
 
-	strcpy (weaponModel, psWeaponModel);	
-	if (char *spot = strstr(weaponModel, ".md3") ) {
-		*spot = 0;
-		spot = strstr(weaponModel, "_w");//i'm using the in view weapon array instead of scanning the item list, so put the _w back on
-		if (!spot&&!strstr(weaponModel, "noweap")) 
+	char weaponModel[MAX_QPATH];
+	Q_strncpyz(weaponModel, psWeaponModel, sizeof(weaponModel));
+	if (char *spot = (char*)Q_stristr(weaponModel, ".md3") ) {
+        *spot = 0;
+		spot = (char*)Q_stristr(weaponModel, "_w");//i'm using the in view weapon array instead of scanning the item list, so put the _w back on
+		if (!spot&&!Q_stristr(weaponModel, "noweap")) 
 		{
-			strcat (weaponModel, "_w");
+			Q_strcat (weaponModel, sizeof(weaponModel), "_w");
 		}
-		strcat (weaponModel, ".glm");	//and change to ghoul2
+		Q_strcat (weaponModel, sizeof(weaponModel), ".glm");	//and change to ghoul2
 	}
 
 	if ( ent->playerModel == -1 )
@@ -1127,7 +1146,6 @@ qboolean WP_SabersIntersect( gentity_t *ent1, gentity_t *ent2, qboolean checkDir
 	return qfalse;
 }
 
-extern float ShortestLineSegBewteen2LineSegs( vec3_t start1, vec3_t end1, vec3_t start2, vec3_t end2, vec3_t close_pnt1, vec3_t close_pnt2 );
 float WP_SabersDistance( gentity_t *ent1, gentity_t *ent2 )
 {
 	vec3_t	saberBaseNext1, saberTipNext1, saberPoint1;
@@ -2504,7 +2522,10 @@ void WP_SaberDamageTrace( gentity_t *ent )
 	qboolean	hit_wall = qfalse;
 	qboolean	brokenParry = qfalse;
 
-	memset( victimEntityNum, ENTITYNUM_NONE, sizeof( victimEntityNum ) );
+	for ( int ven = 0; ven < MAX_SABER_VICTIMS; ven++ )
+	{
+		victimEntityNum[ven] = ENTITYNUM_NONE;
+	}
 	memset( totalDmg, 0, sizeof( totalDmg) );
 	memset( dmgDir, 0, sizeof( dmgDir ) );
 	memset( dmgSpot, 0, sizeof( dmgSpot ) );
@@ -3543,7 +3564,7 @@ void WP_SaberImpact( gentity_t *owner, gentity_t *saber, trace_t *trace )
 			// decrement number of bounces and then see if it should be done bouncing
 			if ( --saber->bounceCount <= 0 ) {
 				// He (or she) will bounce no more (after this current bounce, that is).
-				saber->s.eFlags &= !( EF_BOUNCE | EF_BOUNCE_HALF );
+				saber->s.eFlags &= ~(EF_BOUNCE | EF_BOUNCE_HALF);
 				if ( saber->s.pos.trType == TR_LINEAR && owner && owner->client && owner->client->ps.saberEntityState == SES_RETURNING )
 				{
 					WP_SaberDrop( saber->owner, saber );
@@ -4337,7 +4358,6 @@ void WP_SaberPull( gentity_t *self, gentity_t *saber )
 // Check if we are throwing it, launch it if needed, update position if needed.
 void WP_SaberThrow( gentity_t *self, usercmd_t *ucmd )
 {
-	static float	MAX_SABER_DIST = 400;
 	vec3_t			saberDiff;
 	trace_t			tr;
 	//static float	SABER_SPEED = 10;
@@ -6979,6 +6999,8 @@ void ForceGrip( gentity_t *self )
 				ForceThrow( traceEnt, qfalse );
 				return;
 			}
+			break;
+		default:
 			break;
 		}
 		if ( traceEnt->s.weapon == WP_EMPLACED_GUN )

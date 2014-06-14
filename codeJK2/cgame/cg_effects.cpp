@@ -1,9 +1,24 @@
+/*
+This file is part of Jedi Knight 2.
+
+    Jedi Knight 2 is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Knight 2 is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Knight 2.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 // cg_effects.c -- these functions generate localentities
 
-// this line must stay at top so the whole PCH thing works...
-#include "cg_headers.h"
-
-//#include "cg_local.h"
+#include "cg_local.h"
 #include "cg_media.h"
 
 #if !defined(FX_SCHEDULER_H_INC)
@@ -327,6 +342,8 @@ void CG_MiscModelExplosion( vec3_t mins, vec3_t maxs, int size, material_t chunk
 			effect = "chunks/rockbreakmed";
 			break;
 		}
+	default:
+		break;
 	}
 
 	if ( !effect )
@@ -437,6 +454,7 @@ void CG_Chunks( int owner, vec3_t origin, const vec3_t normal, const vec3_t mins
 	case MAT_ROPE:
 //		cgi_S_StartSound( NULL, owner, CHAN_BODY, cgi_S_RegisterSound( "" ));  FIXME:  needs a sound
 		return;
+	default:
 		break;
 	}
 
@@ -498,6 +516,8 @@ void CG_Chunks( int owner, vec3_t origin, const vec3_t normal, const vec3_t mins
 				{
 					chunkModel = cgs.media.chunkModels[CHUNK_METAL2][Q_irand(0, 3)];
 				}
+				break;
+			default:
 				break;
 			}
 		}

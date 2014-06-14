@@ -1,3 +1,21 @@
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 ////////////////////////////////////////////////////////////////////////////////////////
 // RAVEN SOFTWARE - STAR WARS: JK II
 //  (c) 2002 Activision
@@ -10,8 +28,8 @@
 //
 //
 ////////////////////////////////////////////////////////////////////////////////////////
-#include "g_headers.h"
 #include "b_local.h"
+#include "../Ravl/CVec.h"
 
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -78,6 +96,8 @@ extern void		WP_ResistForcePush( gentity_t *self, gentity_t *pusher, qboolean no
 extern void		ForceJump( gentity_t *self, usercmd_t *ucmd );
 extern void		G_Knockdown( gentity_t *self, gentity_t *attacker, const vec3_t pushDir, float strength, qboolean breakSaberLock );
 
+extern void CG_DrawEdge( vec3_t start, vec3_t end, int type );
+
 ////////////////////////////////////////////////////////////////////////////////////////
 // External Data
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -117,7 +137,7 @@ void	Boba_Printf(const char * format, ...)
 
 	// Tack On The Standard Format Around The Given Format
 	//-----------------------------------------------------
-	sprintf(nFormat, "[BOBA %8d] %s\n", level.time, format);
+	Com_sprintf(nFormat, sizeof(nFormat), "[BOBA %8d] %s\n", level.time, format);
 
 
 	// Resolve Remaining Elipsis Parameters Into Newly Formated String
@@ -127,7 +147,7 @@ void	Boba_Printf(const char * format, ...)
 
 	va_list		argptr;
 	va_start (argptr, format);
-	vsprintf (buf, nFormat, argptr);
+	Q_vsnprintf (buf, sizeof(*string), nFormat, argptr);
 	va_end (argptr);
 
 	// Print It To Debug Output Console

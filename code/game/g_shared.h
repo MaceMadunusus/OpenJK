@@ -1,21 +1,35 @@
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 #ifndef __G_SHARED_H__
 #define __G_SHARED_H__
 
 #include "bg_public.h"
 #include "g_public.h"
 #include "b_public.h"
-#include "../Icarus/Stdafx.h"	//need stl
-#include "../renderer/tr_types.h"
+#include "../icarus/StdAfx.h"	//need stl
+#include "../rd-common/tr_types.h"
 #include "../cgame/cg_public.h"
-#include "G_Vehicles.h"
+#include "g_vehicles.h"
 #include "hitlocs.h"
 #include "bset.h"
 
-#define	FOFS(x) ((int)&(((gentity_t *)0)->x))
-
-#ifdef _XBOX
-#define MAX_NPC_WATER_UPDATE_PER_FRAME	2	// maxmum number of NPCs that will get updated water infromation per frame
-#endif
+#define	FOFS(x) offsetof(gentity_t, x)
 
 typedef enum //# taskID_e
 {
@@ -606,7 +620,7 @@ Ghoul2 Insert End
 
 	union
 	{
-		char	*roff;			// the roff file to use, if there is one
+		char      *roff;                  // the roff file to use, if there is one
 		char	*fxFile;		// name of the external effect file
 	};
 
@@ -826,9 +840,7 @@ Ghoul2 Insert End
 #endif //#ifdef GAME_INCLUDE
 
 extern	gentity_t		g_entities[MAX_GENTITIES];
-#ifndef _USRDLL
 extern	game_import_t	gi;
-#endif
 
 // each WP_* weapon enum has an associated weaponInfo_t
 // that contains media references necessary to present the

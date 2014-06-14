@@ -1,3 +1,23 @@
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2002-2013 Activision
+
+#include "../qcommon/q_shared.h"
+
 #if !defined(RATL_COMMON_INC)
 	#include "ratl_common.h"
 #endif
@@ -35,11 +55,11 @@
 
 
 #if !defined(RUFL_HFILE_INC)
-	#include "..\Rufl\hfile.h"
+	#include "../Rufl/hfile.h"
 #endif
 
 
-void*	ratl::ratl_base::OutputPrint = 0;
+void (*ratl::ratl_base::OutputPrint)(const char*) = 0;
 
 
 
@@ -52,7 +72,6 @@ namespace ratl
 #endif
 
 
-#ifndef _XBOX
 void	ratl_base::save(hfile& file)
 {
 }
@@ -60,7 +79,6 @@ void	ratl_base::save(hfile& file)
 void	ratl_base::load(hfile& file)
 {
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////////////
 // A Profile Print Function 
@@ -92,7 +110,7 @@ void	ratl_base::ProfilePrint(const char * format, ...)
 	//----------------------------------
 	if (OutputPrint!=0)
 	{
-		void (*OutputPrintFcn)(const char* text) = (void (__cdecl*)(const char*))OutputPrint;
+		void (*OutputPrintFcn)(const char* text) = (void (*)(const char*))OutputPrint;
 		OutputPrintFcn(buf);
 	}
 }

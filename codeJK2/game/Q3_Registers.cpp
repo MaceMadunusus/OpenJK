@@ -1,3 +1,21 @@
+/*
+This file is part of Jedi Knight 2.
+
+    Jedi Knight 2 is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Knight 2 is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Knight 2.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 // leave this line at the top for PCH reasons...
 #include "g_headers.h"
 
@@ -270,7 +288,7 @@ Q3_VariableSaveFloats
 void Q3_VariableSaveFloats( varFloat_m &fmap )
 {
 	int numFloats = fmap.size();
-	gi.AppendToSaveGame( 'FVAR', &numFloats, sizeof( numFloats ) );
+	gi.AppendToSaveGame( INT_ID('F','V','A','R'), &numFloats, sizeof( numFloats ) );
 
 	varFloat_m::iterator	vfi;
 	STL_ITERATE( vfi, fmap )
@@ -279,11 +297,11 @@ void Q3_VariableSaveFloats( varFloat_m &fmap )
 		int	idSize = strlen( ((*vfi).first).c_str() );
 		
 		//Save out the real data
-		gi.AppendToSaveGame( 'FIDL', &idSize, sizeof( idSize ) );
-		gi.AppendToSaveGame( 'FIDS', (void *) ((*vfi).first).c_str(), idSize );
+		gi.AppendToSaveGame( INT_ID('F','I','D','L'), &idSize, sizeof( idSize ) );
+		gi.AppendToSaveGame( INT_ID('F','I','D','S'), (void *) ((*vfi).first).c_str(), idSize );
 
 		//Save out the float value
-		gi.AppendToSaveGame( 'FVAL', &((*vfi).second), sizeof( float ) );
+		gi.AppendToSaveGame( INT_ID('F','V','A','L'), &((*vfi).second), sizeof( float ) );
 	}
 }
 
@@ -296,7 +314,7 @@ Q3_VariableSaveStrings
 void Q3_VariableSaveStrings( varString_m &smap )
 {
 	int numStrings = smap.size();
-	gi.AppendToSaveGame( 'SVAR', &numStrings, sizeof( numStrings ) );
+	gi.AppendToSaveGame( INT_ID('S','V','A','R'), &numStrings, sizeof( numStrings ) );
 
 	varString_m::iterator	vsi;
 	STL_ITERATE( vsi, smap )
@@ -305,14 +323,14 @@ void Q3_VariableSaveStrings( varString_m &smap )
 		int	idSize = strlen( ((*vsi).first).c_str() );
 		
 		//Save out the real data
-		gi.AppendToSaveGame( 'SIDL', &idSize, sizeof( idSize ) );
-		gi.AppendToSaveGame( 'SIDS', (void *) ((*vsi).first).c_str(), idSize );
+		gi.AppendToSaveGame( INT_ID('S','I','D','L'), &idSize, sizeof( idSize ) );
+		gi.AppendToSaveGame( INT_ID('S','I','D','S'), (void *) ((*vsi).first).c_str(), idSize );
 
 		//Save out the string value
 		idSize = strlen( ((*vsi).second).c_str() );
 
-		gi.AppendToSaveGame( 'SVSZ', &idSize, sizeof( idSize ) );
-		gi.AppendToSaveGame( 'SVAL', (void *) ((*vsi).second).c_str(), idSize );
+		gi.AppendToSaveGame( INT_ID('S','V','S','Z'), &idSize, sizeof( idSize ) );
+		gi.AppendToSaveGame( INT_ID('S','V','A','L'), (void *) ((*vsi).second).c_str(), idSize );
 	}
 }
 
@@ -342,19 +360,19 @@ void Q3_VariableLoadFloats( varFloat_m &fmap )
 	int		numFloats;
 	char	tempBuffer[1024];
 
-	gi.ReadFromSaveGame( 'FVAR', &numFloats, sizeof( numFloats ), NULL );
+	gi.ReadFromSaveGame( INT_ID('F','V','A','R'), &numFloats, sizeof( numFloats ), NULL );
 
 	for ( int i = 0; i < numFloats; i++ )
 	{
 		int idSize;
 		
-		gi.ReadFromSaveGame( 'FIDL', &idSize, sizeof( idSize ), NULL );
-		gi.ReadFromSaveGame( 'FIDS', &tempBuffer, idSize, NULL );
+		gi.ReadFromSaveGame( INT_ID('F','I','D','L'), &idSize, sizeof( idSize ), NULL );
+		gi.ReadFromSaveGame( INT_ID('F','I','D','S'), &tempBuffer, idSize, NULL );
 		tempBuffer[ idSize ] = 0;
 
 		float	val;
 
-		gi.ReadFromSaveGame( 'FVAL', &val, sizeof( float ), NULL );
+		gi.ReadFromSaveGame( INT_ID('F','V','A','L'), &val, sizeof( float ), NULL );
 
 		Q3_DeclareVariable( TK_FLOAT, (const char *) &tempBuffer );
 		Q3_SetFloatVariable( (const char *) &tempBuffer, val );
@@ -373,18 +391,18 @@ void Q3_VariableLoadStrings( int type, varString_m &fmap )
 	char	tempBuffer[1024];
 	char	tempBuffer2[1024];
 
-	gi.ReadFromSaveGame( 'SVAR', &numFloats, sizeof( numFloats ), NULL );
+	gi.ReadFromSaveGame( INT_ID('S','V','A','R'), &numFloats, sizeof( numFloats ), NULL );
 
 	for ( int i = 0; i < numFloats; i++ )
 	{
 		int idSize;
 		
-		gi.ReadFromSaveGame( 'SIDL', &idSize, sizeof( idSize ), NULL );
-		gi.ReadFromSaveGame( 'SIDS', &tempBuffer, idSize, NULL );
+		gi.ReadFromSaveGame( INT_ID('S','I','D','L'), &idSize, sizeof( idSize ), NULL );
+		gi.ReadFromSaveGame( INT_ID('S','I','D','S'), &tempBuffer, idSize, NULL );
 		tempBuffer[ idSize ] = 0;
 
-		gi.ReadFromSaveGame( 'SVSZ', &idSize, sizeof( idSize ), NULL );
-		gi.ReadFromSaveGame( 'SVAL', &tempBuffer2, idSize, NULL );
+		gi.ReadFromSaveGame( INT_ID('S','V','S','Z'), &idSize, sizeof( idSize ), NULL );
+		gi.ReadFromSaveGame( INT_ID('S','V','A','L'), &tempBuffer2, idSize, NULL );
 		tempBuffer2[ idSize ] = 0;
 
 		switch ( type )

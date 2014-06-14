@@ -1,14 +1,30 @@
+/*
+This file is part of Jedi Knight 2.
+
+    Jedi Knight 2 is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Knight 2 is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Knight 2.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 // cg_view.c -- setup all the parameters (position, angle, etc)
 // for a 3D rendering
 
-// this line must stay at top so the whole PCH thing works...
-#include "cg_headers.h"
-
-//#include "cg_local.h"
+#include "cg_local.h"
 #include "cg_media.h"
 #include "FxScheduler.h"
-#include "cg_lights.h"
-#include "..\game\wp_saber.h"
+#include "../game/wp_saber.h"
+#include "../game/anims.h"
+#include "../game/g_functions.h"
 
 #define MASK_CAMERACLIP (MASK_SOLID)
 #define CAMERA_SIZE	4
@@ -79,7 +95,7 @@ void CG_TestG2Model_f (void) {
 	Q_strncpyz (cg.testModelName, CG_Argv( 1 ), MAX_QPATH );
 	cg.testModelEntity.hModel = cgi_R_RegisterModel( cg.testModelName );
 
-	cg.testModel = gi.G2API_InitGhoul2Model(*((CGhoul2Info_v *)cg.testModelEntity.ghoul2), cg.testModelName, cg.testModelEntity.hModel, NULL, NULL,0,0);
+	cg.testModel = gi.G2API_InitGhoul2Model( *((CGhoul2Info_v *)cg.testModelEntity.ghoul2), cg.testModelName, cg.testModelEntity.hModel, NULL_HANDLE, NULL_HANDLE, 0, 0 );
 	cg.testModelEntity.radius = 100.0f;
 
 	if ( cgi_Argc() == 3 ) {
@@ -171,7 +187,7 @@ void CG_TestModelAnimate_f(void)
 	char	boneName[100];
 	CGhoul2Info_v	&ghoul2 = *((CGhoul2Info_v *)cg.testModelEntity.ghoul2);
 
-	strcpy(boneName, CG_Argv(1));
+	Q_strncpyz(boneName, CG_Argv(1), sizeof(boneName));
 	gi.G2API_SetBoneAnim(&ghoul2[cg.testModel], boneName, atoi(CG_Argv(2)), atoi(CG_Argv(3)), BONE_ANIM_OVERRIDE_LOOP, atof(CG_Argv(4)), cg.time, -1, -1);
 
 }
@@ -355,63 +371,64 @@ CG_CalcIdealThirdPersonViewTarget
 static void CG_CalcIdealThirdPersonViewTarget(void)
 {
 	// Initialize IdealTarget
+	qboolean usesViewEntity = (qboolean)(cg.snap->ps.viewEntity && cg.snap->ps.viewEntity < ENTITYNUM_WORLD);
 	VectorCopy(cg.refdef.vieworg, cameraFocusLoc);
 
-	if ( cg.snap->ps.viewEntity > 0 && cg.snap->ps.viewEntity < ENTITYNUM_WORLD )
+	if ( usesViewEntity )
 	{
+
 		gentity_t *gent = &g_entities[cg.snap->ps.viewEntity];
-		if ( gent->client && (gent->client->NPC_class != CLASS_GONK ) 
-			&& (gent->client->NPC_class != CLASS_INTERROGATOR) 
-			&& (gent->client->NPC_class != CLASS_SENTRY) 
-			&& (gent->client->NPC_class != CLASS_PROBE ) 
-			&& (gent->client->NPC_class != CLASS_MOUSE ) 
-			&& (gent->client->NPC_class != CLASS_R2D2 ) 
-			&& (gent->client->NPC_class != CLASS_R5D2) )
-		{//use the NPC's viewheight
-			cameraFocusLoc[2] += gent->client->ps.viewheight;
-		}
-		else
-		{//droids use a generic offset
+		if ( gent->client && (gent->client->NPC_class == CLASS_GONK
+			|| gent->client->NPC_class == CLASS_INTERROGATOR
+			|| gent->client->NPC_class == CLASS_SENTRY
+			|| gent->client->NPC_class == CLASS_PROBE
+			|| gent->client->NPC_class == CLASS_MOUSE
+			|| gent->client->NPC_class == CLASS_R2D2
+			|| gent->client->NPC_class == CLASS_R5D2) )
+		{	// Droids use a generic offset
 			cameraFocusLoc[2] += 4;
+			VectorCopy( cameraFocusLoc,  cameraIdealTarget );
+			return;
 		}
-		VectorCopy( cameraFocusLoc,  cameraIdealTarget );
+
+		if( gent->client->ps.pm_flags & PMF_DUCKED )
+		{	// sort of a nasty hack in order to get this to work. Don't tell Ensiform, or I'll have to kill him. --eez
+			cameraFocusLoc[2] -= CAMERA_CROUCH_NUDGE*4;
+		}
 	}
-	else 
+	// Add in the new viewheight
+	cameraFocusLoc[2] += cg.predicted_player_state.viewheight;
+	if ( cg.overrides.active & CG_OVERRIDE_3RD_PERSON_VOF )
 	{
-		// Add in the new viewheight
-		cameraFocusLoc[2] += cg.predicted_player_state.viewheight;
-		if ( cg.overrides.active & CG_OVERRIDE_3RD_PERSON_VOF )
+		// Add in a vertical offset from the viewpoint, which puts the actual target above the head, regardless of angle.
+		VectorCopy( cameraFocusLoc, cameraIdealTarget );
+		cameraIdealTarget[2] += cg.overrides.thirdPersonVertOffset;
+		//VectorMA(cameraFocusLoc, cg.overrides.thirdPersonVertOffset, cameraup, cameraIdealTarget);
+	}
+	else
+	{
+		// Add in a vertical offset from the viewpoint, which puts the actual target above the head, regardless of angle.
+		VectorCopy( cameraFocusLoc, cameraIdealTarget );
+		cameraIdealTarget[2] += cg_thirdPersonVertOffset.value;
+		//VectorMA(cameraFocusLoc, cg_thirdPersonVertOffset.value, cameraup, cameraIdealTarget);
+	}
+
+	// Now, if the player is crouching, do a little special tweak.  The problem is that the player's head is way out of his bbox.
+	if (cg.predicted_player_state.pm_flags & PMF_DUCKED)
+	{ // Nudge to focus location up a tad.
+		vec3_t nudgepos;
+		trace_t trace;
+
+		VectorCopy(cameraFocusLoc, nudgepos);
+		nudgepos[2]+=CAMERA_CROUCH_NUDGE;
+		CG_Trace(&trace, cameraFocusLoc, cameramins, cameramaxs, nudgepos, cg.predicted_player_state.clientNum, MASK_CAMERACLIP);
+		if (trace.fraction < 1.0)
 		{
-			// Add in a vertical offset from the viewpoint, which puts the actual target above the head, regardless of angle.
-			VectorCopy( cameraFocusLoc, cameraIdealTarget );
-			cameraIdealTarget[2] += cg.overrides.thirdPersonVertOffset;
-			//VectorMA(cameraFocusLoc, cg.overrides.thirdPersonVertOffset, cameraup, cameraIdealTarget);
+			VectorCopy(trace.endpos, cameraFocusLoc);
 		}
 		else
 		{
-			// Add in a vertical offset from the viewpoint, which puts the actual target above the head, regardless of angle.
-			VectorCopy( cameraFocusLoc, cameraIdealTarget );
-			cameraIdealTarget[2] += cg_thirdPersonVertOffset.value;
-			//VectorMA(cameraFocusLoc, cg_thirdPersonVertOffset.value, cameraup, cameraIdealTarget);
-		}
-
-		// Now, if the player is crouching, do a little special tweak.  The problem is that the player's head is way out of his bbox.
-		if (cg.predicted_player_state.pm_flags & PMF_DUCKED)
-		{ // Nudge to focus location up a tad.
-			vec3_t nudgepos;
-			trace_t trace;
-
-			VectorCopy(cameraFocusLoc, nudgepos);
-			nudgepos[2]+=CAMERA_CROUCH_NUDGE;
-			CG_Trace(&trace, cameraFocusLoc, cameramins, cameramaxs, nudgepos, cg.predicted_player_state.clientNum, MASK_CAMERACLIP);
-			if (trace.fraction < 1.0)
-			{
-				VectorCopy(trace.endpos, cameraFocusLoc);
-			}
-			else
-			{
-				VectorCopy(nudgepos, cameraFocusLoc);
-			}
+			VectorCopy(nudgepos, cameraFocusLoc);
 		}
 	}
 }
@@ -426,6 +443,7 @@ CG_CalcIdealThirdPersonViewLocation
 */
 static void CG_CalcIdealThirdPersonViewLocation(void)
 {
+	gentity_t	*player = &g_entities[0];
 	if ( cg.overrides.active & CG_OVERRIDE_3RD_PERSON_RNG )
 	{
 		VectorMA(cameraIdealTarget, -(cg.overrides.thirdPersonRange), camerafwd, cameraIdealLoc);
@@ -1227,6 +1245,16 @@ qboolean CG_CalcFOVFromX( float fov_x )
 	float	fov_y;
 	qboolean	inwater;
 
+	if ( cg_fovAspectAdjust.integer ) {
+		// Based on LordHavoc's code for Darkplaces
+		// http://www.quakeworld.nu/forum/topic/53/what-does-your-qw-look-like/page/30
+		const float baseAspect = 0.75f; // 3/4
+		const float aspect = (float)cgs.glconfig.vidWidth/(float)cgs.glconfig.vidHeight;
+		const float desiredFov = fov_x;
+
+		fov_x = atan( tan( desiredFov*M_PI / 360.0f ) * baseAspect*aspect )*360.0f / M_PI;
+	}
+
 	x = cg.refdef.width / tan( fov_x / 360 * M_PI );
 	fov_y = atan2( cg.refdef.height, x );
 	fov_y = fov_y * 360 / M_PI;
@@ -1275,6 +1303,7 @@ qboolean CG_CalcFOVFromX( float fov_x )
 
 float CG_ForceSpeedFOV( void )
 {
+	gentity_t	*player = &g_entities[0];
 	float fov;
 	float timeLeft = player->client->ps.forcePowerDuration[FP_SPEED] - cg.time;
 	float length = FORCE_SPEED_DURATION*forceSpeedValue[player->client->ps.forcePowerLevel[FP_SPEED]];
@@ -1304,6 +1333,7 @@ Fixed fov at intermissions, otherwise account for fov variable and zooms.
 static qboolean	CG_CalcFov( void ) {
 	float	fov_x;
 	float	f;
+		gentity_t	*player = &g_entities[0];
 
 	if ( cg.predicted_player_state.pm_type == PM_INTERMISSION ) {
 		// if in intermission, use a fixed value
@@ -1413,9 +1443,7 @@ static qboolean	CG_CalcFov( void ) {
 			fov_x = cg_zoomFov;
 		} else {
 			f = ( cg.time - cg.zoomTime ) / ZOOM_OUT_TIME;
-			if ( f > 1.0 ) {
-				fov_x = fov_x;
-			} else {
+			if ( f <= 1.0 ) {
 				fov_x = cg_zoomFov + f * ( fov_x - cg_zoomFov );
 			}
 		}
@@ -1544,7 +1572,22 @@ static qboolean CG_CalcViewValues( void ) {
 	// calculate size of 3D view
 	CG_CalcVrect();
 
-	ps = &cg.predicted_player_state;
+	if( cg.snap->ps.viewEntity != 0 && cg.snap->ps.viewEntity < ENTITYNUM_WORLD )
+	{
+		if( g_entities[cg.snap->ps.viewEntity].client && g_entities[cg.snap->ps.viewEntity].NPC )
+		{
+			ps = &g_entities[cg.snap->ps.viewEntity].client->ps;
+		}
+		else
+		{
+			ps = &cg.predicted_player_state;
+			viewEntIsCam = qtrue;
+		}
+	}
+	else
+	{
+		ps = &cg.predicted_player_state;
+	}
 #ifndef FINAL_BUILD
 	trap_Com_SetOrgAngles(ps->origin,ps->viewangles);
 #endif
@@ -1931,6 +1974,11 @@ wasForceSpeed=isForceSpeed;
 		&& ( cg.snap->ps.viewEntity == 0 || cg.snap->ps.viewEntity >= ENTITYNUM_WORLD ) )
 	{
 		CG_AddViewWeapon( &cg.predicted_player_state );
+	}
+	else if( cg.snap->ps.viewEntity != 0 && cg.snap->ps.viewEntity < ENTITYNUM_WORLD &&
+		g_entities[cg.snap->ps.viewEntity].client)
+	{
+		CG_AddViewWeapon( &g_entities[cg.snap->ps.viewEntity ].client->ps );	// HAX - because I wanted to --eez
 	}
 
 	if ( !cg.hyperspace ) 

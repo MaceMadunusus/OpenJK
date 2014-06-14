@@ -1,3 +1,21 @@
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 #ifndef __UI_SHARED_H
 #define __UI_SHARED_H
 
@@ -95,17 +113,10 @@ typedef struct multiDef_s {
 #define CVAR_SUBSTRING	0x00000010	//when using enable or disable, just check for strstr instead of ==
 
 
-#ifdef _XBOX
-// Super small - doesn't need to be bigger yet, helps us get into 64 MB
-//#define STRING_POOL_SIZE 16*1024
-#define STRING_POOL_SIZE 64*1024
-
-#else
 #ifdef CGAME
 #define STRING_POOL_SIZE 128*1024
 #else
 #define STRING_POOL_SIZE 384*1024
-#endif
 #endif
 
 #define	NUM_CROSSHAIRS			9
@@ -362,7 +373,7 @@ typedef struct itemDef_s {
 	int			textStyle;					// ( optional ) style, normal and shadowed are it for now
 	char		*text;						// display text
 	char		*text2;						// display text2
-	char		*descText;					//	Description text
+	const char		*descText;				//	Description text
 	void		*parent;					// menu owner
 	qhandle_t	asset;						// handle to asset
 	CGhoul2Info_v ghoul2;					// ghoul2 instance if available instead of a model.
@@ -458,7 +469,8 @@ typedef struct
 menuDef_t	*Menu_GetFocused(void);
 
 void		Controls_GetConfig( void );
-void		Controls_SetConfig(qboolean restart);
+void		Controls_SetConfig( void );
+void		Controls_SetDefaults( void );
 qboolean	Display_KeyBindPending(void);
 qboolean	Display_MouseMove(void *p, int x, int y);
 int			Display_VisibleMenuCount(void);
@@ -481,11 +493,7 @@ qboolean	PC_ParseString(const char **tempStr);
 qboolean	PC_ParseStringMem(const char **out);
 void		PC_ParseWarning(const char *message);
 qboolean	PC_String_Parse(int handle, const char **out);
-#ifdef _XBOX	
-int			PC_StartParseSession(const char *fileName,char **buffer, bool nested = false);
-#else
 int			PC_StartParseSession(const char *fileName,char **buffer);
-#endif
 char		*PC_ParseExt(void);
 qboolean	PC_ParseInt(int *number);
 qboolean	PC_ParseFloat(float *number);

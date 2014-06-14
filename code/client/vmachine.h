@@ -1,6 +1,26 @@
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 // vmachine.h -- virtual machine header for client
 #ifndef __VMACHINE_H__
 #define __VMACHINE_H__
+
+#include "../qcommon/q_shared.h"
 
 /*
 ==================================================================
@@ -46,19 +66,16 @@ VIRTUAL MACHINE
 ==============================================================
 */
 struct vm_s {
-	int			(*entryPoint)( int callNum, ... );
+	intptr_t	(*entryPoint)( int callNum, ... );
 };
 
 typedef struct vm_s vm_t;
 
 extern	vm_t	cgvm;	// interface to cgame dll or vm
-extern	vm_t	uivm;	// interface to ui dll or vm
 
-extern int	VM_Call( int callnum, ... );
-extern int VM_DllSyscall( int arg, ... );
+extern intptr_t	VM_Call( int callnum, ... );
+extern intptr_t VM_DllSyscall( intptr_t arg, ... );
 extern void CL_ShutdownCGame(void);
-
-#include "../game/q_shared.h"
 
 /*
 ================
@@ -67,7 +84,7 @@ VM_Create
 it will attempt to load as a system dll
 ================
 */
-extern void *Sys_LoadCgame( int (**entryPoint)(int, ...), int (*systemcalls)(int, ...) );
+extern void *Sys_LoadCgame( intptr_t (**entryPoint)(int, ...), intptr_t (*systemcalls)(intptr_t, ...) );
 
 inline void *VM_Create( const char *module) 
 {

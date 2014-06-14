@@ -1,13 +1,28 @@
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 //NPC_utils.cpp
-
-// leave this line at the top for all NPC_xxxx.cpp files...
-#include "g_headers.h"
-
-
-
 
 #include "b_local.h"
 #include "Q3_Interface.h"
+#include "g_navigator.h"
+#include "../cgame/cg_local.h"
+#include "g_nav.h"
 
 extern Vehicle_t *G_IsRidingVehicle( gentity_t *pEnt );
 
@@ -897,7 +912,7 @@ qboolean G_ActivateBehavior (gentity_t *self, int bset )
 		bSID = (bState_t)(GetIDForString( BSTable, bs_name ));
 	}
 
-	if(bSID > -1)
+	if(bSID != (bState_t)-1)
 	{
 		self->NPC->tempBehavior = BS_DEFAULT;
 		self->NPC->behaviorState = bSID;

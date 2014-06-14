@@ -1,3 +1,21 @@
+/*
+This file is part of Jedi Knight 2.
+
+    Jedi Knight 2 is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Knight 2 is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Knight 2.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 // g_combat.c
 
 // leave this line at the top for all g_xxxx.cpp files...
@@ -15,7 +33,7 @@
 #include "g_icarus.h"
 #include "wp_saber.h"
 #include "Q3_Interface.h"
-#include "../qcommon/stripPublic.h"
+#include "../../code/qcommon/strippublic.h"
 
 extern	cvar_t	*g_debugDamage;
 extern qboolean	stop_icarus;
@@ -854,10 +872,10 @@ qboolean G_GetHitLocFromSurfName( gentity_t *ent, const char *surfName, int *hit
 
 	if ( ent->client 
 		&& ( ent->client->NPC_class == CLASS_R2D2 
-			|| ent->client->NPC_class == CLASS_R2D2 
+			|| ent->client->NPC_class == CLASS_R5D2 
 			|| ent->client->NPC_class == CLASS_GONK
 			|| ent->client->NPC_class == CLASS_MOUSE
-			|| ent->client->NPC_class == CLASS_SENTRY
+			|| ent->client->NPC_class == CLASS_SEEKER
 			|| ent->client->NPC_class == CLASS_INTERROGATOR
 			|| ent->client->NPC_class == CLASS_SENTRY
 			|| ent->client->NPC_class == CLASS_PROBE ) )
@@ -1263,7 +1281,6 @@ int G_GetHitLocation ( gentity_t *target, vec3_t ppoint )
 	vec3_t			point, point_dir;
 	vec3_t			forward, right, up;
 	vec3_t			tangles, tcenter;
-	float			tradius;
 	float			udot, fdot, rdot;
 	int				Vertical, Forward, Lateral;
 	int				HitLoc;
@@ -1279,9 +1296,6 @@ int G_GetHitLocation ( gentity_t *target, vec3_t ppoint )
 //get center of target
 	VectorAdd(target->absmin, target->absmax, tcenter);
 	VectorScale(tcenter, 0.5, tcenter);
-
-//get radius width of target
-	tradius = (fabs(target->maxs[0]) + fabs(target->maxs[1]) + fabs(target->mins[0]) + fabs(target->mins[1]))/4;
 
 //get impact point
 	if(ppoint && !VectorCompare(ppoint, vec3_origin))
@@ -4828,7 +4842,6 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker, vec3_
 {
 	gclient_t	*client;
 	int			take;
-	int			save;
 	int			asave = 0;
 	int			knockback;
 	vec3_t		newDir;
@@ -5093,7 +5106,6 @@ void G_Damage( gentity_t *targ, gentity_t *inflictor, gentity_t *attacker, vec3_
 	}
 
 	take = damage;
-	save = 0;
 
 	//FIXME: Do not use this method of difficulty changing
 	// Scale the amount of damage given to the player based on the skill setting

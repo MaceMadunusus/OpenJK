@@ -1,3 +1,21 @@
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 // leave this as first line for PCH reasons...
 //
 #include "../server/exe_headers.h"
@@ -10,10 +28,9 @@
 
 int PC_ReadTokenHandle(int handle, struct pc_token_s *pc_token);
 
-int CL_UISystemCalls( int *args );
+intptr_t CL_UISystemCalls( intptr_t *args );
 
 //prototypes
-//extern qboolean SG_GetSaveImage( const char *psPathlessBaseName, void *pvAddress );
 extern int SG_GetSaveGameComment(const char *psPathlessBaseName, char *sComment, char *sMapName);
 extern qboolean SG_GameAllowedToSaveHere(qboolean inCamera);
 extern void SG_StoreSaveGameComment(const char *sComment);
@@ -89,7 +106,7 @@ Key_GetBindingBuf
 ====================
 */
 void Key_GetBindingBuf( int keynum, char *buf, int buflen ) {
-	char	*value;
+	const char	*value;
 
 	value = Key_GetBinding( keynum );
 	if ( value ) {
@@ -102,40 +119,18 @@ void Key_GetBindingBuf( int keynum, char *buf, int buflen ) {
 
 /*
 ====================
-Key_GetCatcher
-====================
-*/
-int Key_GetCatcher( void ) 
-{
-	return cls.keyCatchers;
-}
-
-/*
-====================
-Key_GetCatcher
-====================
-*/
-void Key_SetCatcher( int catcher ) 
-{
-	cls.keyCatchers = catcher;
-}
-
-/*
-====================
 FloatAsInt
 ====================
 */
-int FloatAsInt( float f ) 
+static int FloatAsInt( float f ) 
 {
-	int		temp;
-
-	*(float *)&temp = f;
-
-	return temp;
+	byteAlias_t fi;
+	fi.f = f;
+	return fi.i;
 }
 
 static void UI_Cvar_Create( const char *var_name, const char *var_value, int flags ) {
-	Cvar_Get( var_name, var_value, flags );
+	Cvar_Register( NULL, var_name, var_value, flags );
 }
 
 static int GetConfigString(int index, char *buf, int size)
@@ -160,7 +155,7 @@ CL_ShutdownUI
 ====================
 */
 void CL_ShutdownUI( void ) {
-	cls.keyCatchers &= ~KEYCATCH_UI;
+	Key_SetCatcher( Key_GetCatcher( ) & ~KEYCATCH_UI );
 	cls.uiStarted = qfalse;
 }
 
@@ -198,11 +193,8 @@ CL_InitUI
 ====================
 */
 void CL_InitUI( void ) {
-#ifndef __NO_JK2
-	if(Cvar_VariableIntegerValue("com_jk2"))
-	{
-		JK2SP_Register("keynames", 0	/*SP_REGISTER_REQUIRED*/);		// reference is KEYNAMES
-	}
+#ifdef JK2_MODE
+	JK2SP_Register("keynames", 0	/*SP_REGISTER_REQUIRED*/);		// reference is KEYNAMES
 #endif
 
 	uiimport_t	uii;
@@ -241,11 +233,9 @@ void CL_InitUI( void ) {
 	uii.R_RegisterShader		= re.RegisterShader;
 	uii.R_RegisterShaderNoMip	= re.RegisterShaderNoMip;
 	uii.R_RegisterFont			= re.RegisterFont;
-#ifndef _XBOX
 	uii.R_Font_StrLenPixels		= re.Font_StrLenPixels;
 	uii.R_Font_HeightPixels		= re.Font_HeightPixels;
 	uii.R_Font_DrawString		= re.Font_DrawString;
-#endif
 	uii.R_Font_StrLenChars		= re.Font_StrLenChars;
 	uii.Language_IsAsian		= re.Language_IsAsian;
 	uii.Language_UsesSpaces		= re.Language_UsesSpaces;
@@ -271,10 +261,6 @@ void CL_InitUI( void ) {
 	uii.R_DrawStretchPic		= re.DrawStretchPic;
 	uii.UpdateScreen			= SCR_UpdateScreen;
 
-#ifdef _XBOX
-	uii.PrecacheScreenshot		= SCR_PrecacheScreenshot;
-#endif
-
 	uii.R_LerpTag				= re.LerpTag;
 
 	uii.S_StartLocalLoopingSound= S_StartLocalLoopingSound;
@@ -290,7 +276,7 @@ void CL_InitUI( void ) {
 	uii.Key_ClearStates			= Key_ClearStates;
 	uii.Key_GetCatcher			= Key_GetCatcher;
 	uii.Key_SetCatcher			= Key_SetCatcher;
-#ifndef __NO_JK2
+#ifdef JK2_MODE
 	uii.SP_Register				= JK2SP_Register;
 	uii.SP_GetStringText		= JK2SP_GetStringText;
 	uii.SP_GetStringTextString  = JK2SP_GetStringTextString;
@@ -308,13 +294,6 @@ void CL_InitUI( void ) {
 
 	UI_Init(UI_API_VERSION, &uii, (cls.state > CA_DISCONNECTED && cls.state <= CA_ACTIVE));
 
-//JLF MPSKIPPED
-#ifdef _XBOX
-	extern void UpdateDemoTimer();
-	UpdateDemoTimer();
-
-#endif
-
 //	uie->UI_Init( UI_API_VERSION, &uii );
 
 }
@@ -331,7 +310,7 @@ qboolean UI_GameCommand( void ) {
 
 void CL_GenericMenu_f(void)
 {		
-	char *arg = Cmd_Argv( 1 );
+	const char *arg = Cmd_Argv( 1 );
 
 	if (cls.uiStarted) {
 		UI_SetActiveMenu("ingame",arg);
@@ -371,11 +350,7 @@ CL_UISystemCalls
 The ui module is making a system call
 ====================
 */
-vm_t	uivm;
-
-#define	VMA(x) ((void*)args[x])
-#define	VMF(x)	((float *)args)[x]
-int CL_UISystemCalls( int *args ) 
+intptr_t CL_UISystemCalls( intptr_t *args ) 
 {
 
 	switch( args[0] ) 

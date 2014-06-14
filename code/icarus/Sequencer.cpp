@@ -1,19 +1,37 @@
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 // Script Command Sequencer
 //
 //	-- jweier
 
 // this include must remain at the top of every Icarus CPP file
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "IcarusImplementation.h"
 
-#include "BlockStream.h"
-#include "Sequence.h"
-#include "TaskManager.h"
-#include "Sequencer.h"
+#include "blockstream.h"
+#include "sequence.h"
+#include "taskmanager.h"
+#include "sequencer.h"
 
 #define S_FAILED(a) (a!=SEQ_OK)
 
-#define STL_ITERATE( a, b )		for ( a = b.begin(); a != b.end(); a++ )
+#define STL_ITERATE( a, b )		for ( a = b.begin(); a != b.end(); ++a )
 #define STL_INSERT( a, b )		a.insert( a.end(), b );
 
 
@@ -406,7 +424,7 @@ int CSequencer::ParseRun( CBlock *block , CIcarus* icarus)
 	int			buffer_size;
 
 	//Get the name and format it
-	StripExtension( (char*) block->GetMemberData( 0 ), (char *) newname );
+	COM_StripExtension( (char*) block->GetMemberData( 0 ), (char *) newname, sizeof(newname) );
 
 	//Get the file from the game engine
   	buffer_size = game->LoadFile( newname, (void **) &buffer );
@@ -1149,7 +1167,7 @@ int CSequencer::EvaluateConditional( CBlock *block , CIcarus* icarus)
 
 	case CIcarus::TK_VECTOR:
 
-		tempString1[0] = NULL;
+		tempString1[0] = '\0';
 
 		for ( i = 0; i < 3; i++ )
 		{
@@ -1319,7 +1337,7 @@ int CSequencer::EvaluateConditional( CBlock *block , CIcarus* icarus)
 
 	case CIcarus::TK_VECTOR:
 
-		tempString2[0] = NULL;
+		tempString2[0] = '\0';
 
 		for ( i = 0; i < 3; i++ )
 		{
@@ -2296,7 +2314,6 @@ Pops a command off the current sequence
 CBlock *CSequencer::PopCommand( int flag )
 {
 	//Make sure everything is ok
-	assert( m_curSequence );
 	if ( m_curSequence == NULL )
 		return NULL;
 
@@ -2307,31 +2324,6 @@ CBlock *CSequencer::PopCommand( int flag )
 
 	return block;
 }
-
-/*
-========================
-StripExtension
-
-Filename ultility.  Probably get rid of this if I decided to use CStrings...
-========================
-*/
-
-void CSequencer::StripExtension( const char *in, char *out )
-{
-	int		i = strlen(in) + 1;
-	
-	while ( (in[i] != '.') && (i >= 0) )
-	 i--;
-
-	if ( i < 0 )
-	{
-		strcpy(out, in);
-		return;
-	}
-
-	strncpy(out, in, i);
-}
-
 
 /*
 -------------------------
@@ -2383,7 +2375,13 @@ int CSequencer::DestroySequence( CSequence *sequence, CIcarus* icarus )
 	{
 		if((*tsi).second == sequence)
 		{
+#ifdef _WIN32
 			tsi = m_taskSequences.erase(tsi);
+#else
+			taskSequence_m::iterator itTemp = tsi;
+			tsi++;
+			m_taskSequences.erase(itTemp);
+#endif
 		}
 		else
 		{

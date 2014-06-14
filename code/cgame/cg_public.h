@@ -1,3 +1,21 @@
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 #ifndef _CG_PUBLIC_H
 #define _CG_PUBLIC_H
 
@@ -24,7 +42,6 @@
 struct snapshot_s 
 {
 	int				snapFlags;			// SNAPFLAG_RATE_DELAYED, SNAPFLAG_DROPPED_COMMANDS
-	int				ping;
 
 	int				serverTime;		// server time the message is valid for (in msec)
 
@@ -196,9 +213,12 @@ Ghoul2 Insert End
 	CG_SP_REGISTER,
 	CG_SP_GETSTRINGTEXT,
 	CG_ANYLANGUAGE_READFROMSTRING2,
+
+	CG_OPENJK_MENU_PAINT,
+	CG_OPENJK_GETMENU_BYNAME,
 } cgameImport_t;
 
-#ifndef __NO_JK2
+#ifdef JK2_MODE
 typedef enum {
 	CG_PRINT_JK2,
 	CG_ERROR_JK2,
@@ -318,9 +338,12 @@ Ghoul2 Insert End
 	CG_SP_GETSTRINGTEXT_JK2,
 	CG_UI_GETITEMTEXT_JK2,
 	CG_ANYLANGUAGE_READFROMSTRING2_JK2,
+
+	CG_OPENJK_MENU_PAINT_JK2,
+	CG_OPENJK_GETMENU_BYNAME_JK2,
 } cgameJK2Import_t;
 #endif
 
 //----------------------------------------------
 
-#endif _CG_PUBLIC_H
+#endif // _CG_PUBLIC_H

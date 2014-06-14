@@ -1,3 +1,21 @@
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 #pragma once
 #if !defined(G2_H_INC)
 #define G2_H_INC
@@ -105,10 +123,13 @@ int			G2_Add_Bolt_Surf_Num(CGhoul2Info *ghlInfo, boltInfo_v &bltlist, surfaceInf
 
 
 // API calls - G2_API.cpp
+void		RestoreGhoul2InfoArray();
+void		SaveGhoul2InfoArray();
+
 qhandle_t	G2API_PrecacheGhoul2Model(const char *fileName);
 
-int			G2API_InitGhoul2Model(CGhoul2Info_v &ghoul2, const char *fileName, int modelIndex, qhandle_t customSkin = NULL,
-								  qhandle_t customShader = NULL, int modelFlags = 0, int lodBias = 0);
+int			G2API_InitGhoul2Model(CGhoul2Info_v &ghoul2, const char *fileName, int modelIndex, qhandle_t customSkin = NULL_HANDLE,
+								  qhandle_t customShader = NULL_HANDLE, int modelFlags = 0, int lodBias = 0);
 qboolean	G2API_SetLodBias(CGhoul2Info *ghlInfo, int lodBias);
 qboolean	G2API_SetSkin(CGhoul2Info *ghlInfo, qhandle_t customSkin, qhandle_t renderSkin = 0);
 qboolean	G2API_SetShader(CGhoul2Info *ghlInfo, qhandle_t customShader);

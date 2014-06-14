@@ -1,15 +1,32 @@
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 // cg_ents.c -- present snapshot entities, happens every single frame
 
 // this line must stay at top so the whole PCH thing works...
 #include "cg_headers.h"
 
-//#include "cg_local.h"
 #include "cg_media.h"
-#include "..\game\g_functions.h"
-#include "..\ghoul2\g2.h"
+#include "../game/g_functions.h"
+#include "../ghoul2/G2.h"
 #include "FxScheduler.h"
-#include "..\game\wp_saber.h"
-#include "..\game\g_vehicles.h"
+#include "../game/wp_saber.h"
+#include "../game/g_vehicles.h"
 
 extern void CG_AddSaberBlade( centity_t *cent, centity_t *scent, refEntity_t *saber, int renderfx, int modelIndex, vec3_t origin, vec3_t angles);
 extern void CG_CheckSaberInWater( centity_t *cent, centity_t *scent, int saberNum, int modelIndex, vec3_t origin, vec3_t angles );
@@ -168,14 +185,14 @@ static void CG_EntityEffects( centity_t *cent ) {
 	// constant light glow
 	if ( cent->currentState.constantLight ) {
 		int		cl;
-		int		i, r, g, b;
+		float	i, r, g, b;
 
 		cl = cent->currentState.constantLight;
-		r = cl & 255;
-		g = ( cl >> 8 ) & 255;
-		b = ( cl >> 16 ) & 255;
-		i = ( ( cl >> 24 ) & 255 ) * 4;
-		cgi_R_AddLightToScene( cent->lerpOrigin, (float)i, (float)r, (float)g, (float)b );
+		r = (float) (cl & 0xFF) / 255.0;
+		g = (float) ((cl >> 8) & 0xFF) / 255.0;
+		b = (float) ((cl >> 16) & 0xFF) / 255.0;
+		i = (float) ((cl >> 24) & 0xFF) * 4.0;
+		cgi_R_AddLightToScene( cent->lerpOrigin, i, r, g, b );
 	}
 }
 
@@ -1117,7 +1134,7 @@ static void CG_Missile( centity_t *cent ) {
 			cgi_S_AddLoopingSound( cent->currentState.number, cent->lerpOrigin, vec3_origin, weapon->alt_missileSound );
 
 		//Don't draw something without a model
-		if ( weapon->alt_missileModel == NULL )
+		if ( weapon->alt_missileModel == NULL_HANDLE )
 			return;
 	}
 	else
@@ -1136,7 +1153,7 @@ static void CG_Missile( centity_t *cent ) {
 			cgi_S_AddLoopingSound( cent->currentState.number, cent->lerpOrigin, vec3_origin, weapon->missileSound );
 
 		//Don't draw something without a model
-		if ( weapon->missileModel == NULL )
+		if ( weapon->missileModel == NULL_HANDLE )
 			return;
 	}
 
@@ -1163,9 +1180,8 @@ Ghoul2 Insert End
 		ent.hModel = weapon->missileModel;
 
 	// spin as it moves
-	if ( s1->apos.trType != TR_INTERPOLATE)
+	if ( s1->apos.trType != TR_INTERPOLATE )
 	{
-
 		// convert direction of travel into axis
 		if ( VectorNormalize2( s1->pos.trDelta, ent.axis[0] ) == 0 ) {
 			ent.axis[0][2] = 1;
@@ -1366,48 +1382,14 @@ Ghoul2 Insert End
 	cgi_R_AddRefEntityToScene(&ent);
 }
 
-/*
-===============
-CG_Cylinder
-===============
-*/
-void CG_Cylinder( vec3_t start, vec3_t end, float radius, vec3_t color ) 
+static vec2_t st[] =
 {
-	vec3_t	dir;
-	float	length;
-
-	VectorSubtract( end, start, dir );
-	length = VectorNormalize( dir );
-
-/*	FX_AddCylinder( -1, start, 
-					dir, 
-					length, 
-					0.0f, 
-					radius,
-					0.0f,
-					radius,
-					0.0f,
-					1.0f,
-					1.0f,
-					color,
-					color,
-					100.0f,
-					cgs.media.waterDropShader
-					0, -1, -1 );*/
-}
-
-static vec2_t st[] = 
-{
-	0.0f, 0.0f,
-	1.0f, 0.0f,
-	1.0f, 1.0f,
-	0.0f, 1.0f
+	{ 0.0f, 0.0f }, { 1.0f, 0.0f }, { 1.0f, 1.0f }, { 0.0f, 1.0f }
 };
 
 void CG_Cube( vec3_t mins, vec3_t maxs, vec3_t color, float alpha ) 
 {
 	vec3_t	point[4], rot={0,0,0};
-	vec2_t	st[4];
 	int		vec[3];
 	int		axis, i;
 
@@ -2012,9 +1994,9 @@ void CG_Limb ( centity_t *cent )
 		}
 		else
 		{
-extern cvar_t	*g_dismemberment;
 extern cvar_t	*g_saberRealisticCombat;
 			//3) turn off w/descendants that surf in original model
+#if 0
 			if ( cent->gent->target )//stubTagName )
 			{//add smoke to cap surf, spawn effect
 				if ( cent->gent->delay <= cg.time )
@@ -2027,6 +2009,7 @@ extern cvar_t	*g_saberRealisticCombat;
 					}
 				}
 			}
+#endif
 			if ( cent->gent->target2 )//limbName
 			{//turn the limb off
 				//NOTE: MUST use G2SURFACEFLAG_NODESCENDANTS
@@ -2267,9 +2250,6 @@ static void CG_Think ( centity_t *cent )
 static void CG_Clouds( centity_t *cent )
 {
 	refEntity_t		ent;
-	entityState_t	*s1;
-
-	s1 = &cent->currentState;
 
 	// create the render entity
 	memset( &ent, 0, sizeof( ent ));
@@ -2576,7 +2556,7 @@ void CG_ROFF_NotetrackCallback( centity_t *cent, const char *notetrack)
 
 		if (posoffsetGathered < 3)
 		{
-			sprintf(errMsg, "Offset position argument for 'effect' type is invalid.");
+			Q_strncpyz(errMsg, "Offset position argument for 'effect' type is invalid.", sizeof(errMsg));
 			goto functionend;
 		}
 

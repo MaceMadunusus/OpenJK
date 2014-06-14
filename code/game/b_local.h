@@ -1,3 +1,21 @@
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 //B_local.h
 //re-added by MCG
 #ifndef __B_LOCAL_H__
@@ -6,7 +24,7 @@
 #include "g_local.h"
 #include "say.h"
 
-#include "AI.h"
+#include "ai.h"
 
 #define	AI_TIMERS 0//turn on to see print-outs of AI/nav timing
 //
@@ -177,9 +195,6 @@ extern qboolean InFOV( vec3_t origin, gentity_t *from, int hFOV, int vFOV );
 extern qboolean InFOV( vec3_t spot, vec3_t from, vec3_t fromAngles, int hFOV, int vFOV );
 extern visibility_t NPC_CheckVisibility ( gentity_t *ent, int flags );
 extern qboolean InVisrange ( gentity_t *ent );
-
-//NPC_sounds
-//extern void NPC_AngerSound(void);
 
 //NPC_spawn
 extern void NPC_Spawn( gentity_t *self );

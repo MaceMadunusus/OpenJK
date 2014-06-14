@@ -1,3 +1,21 @@
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 // sv_client.c -- server code for dealing with clients
 
 // leave this as first line for PCH reasons...
@@ -20,12 +38,12 @@ void SV_DirectConnect( netadr_t from ) {
 	char		userinfo[MAX_INFO_STRING];
 	int			i;
 	client_t	*cl, *newcl;
-	MAC_STATIC client_t	temp;
+	client_t	temp;
 	gentity_t		*ent;
 	int			clientNum;
 	int			version;
 	int			qport;
-	int			challenge;
+	//int			challenge;
 	char		*denied;
 
 	Com_DPrintf ("SVC_DirectConnect ()\n");
@@ -41,7 +59,7 @@ void SV_DirectConnect( netadr_t from ) {
 
 	qport = atoi( Info_ValueForKey( userinfo, "qport" ) );
 
-	challenge = atoi( Info_ValueForKey( userinfo, "challenge" ) );
+	//challenge = atoi( Info_ValueForKey( userinfo, "challenge" ) );
 
 	// see if the challenge is valid (local clients don't need to challenge)
 	if ( !NET_IsLocalAddress (from) ) {
@@ -122,7 +140,6 @@ gotnewcl:
 	NET_OutOfBandPrint( NS_SERVER, from, "connectResponse" );
 
 	newcl->state = CS_CONNECTED;
-	newcl->nextSnapshotTime = sv.time;
 	newcl->lastPacketTime = sv.time;
 	newcl->lastConnectTime = sv.time;
 
@@ -243,7 +260,6 @@ void SV_ClientEnterWorld( client_t *client, usercmd_t *cmd, SavedGameJustLoaded_
 	//
 	client->deltaMessage = -1;
 	client->cmdNum = 0;
-	client->nextSnapshotTime = sv.time;	// generate a snapshot immediately
 
 	// call the game begin function
 	ge->ClientBegin( client - svs.clients, cmd, eSavedGameJustLoaded );
@@ -275,36 +291,11 @@ static void SV_Disconnect_f( client_t *cl ) {
 =================
 SV_UserinfoChanged
 
-Pull specific info from a newly changed userinfo string
-into a more C friendly form.
+Pull specific info from a newly changed userinfo string into a more C friendly form.
 =================
 */
 void SV_UserinfoChanged( client_t *cl ) {
-	char	*val;
-	int		i;
-
-	// name for C code
-	Q_strncpyz( cl->name, Info_ValueForKey (cl->userinfo, "name"), sizeof(cl->name) );
-
-	// rate command
-
-	// if the client is on the same subnet as the server and we aren't running an
-	// internet public server, assume they don't need a rate choke
-	cl->rate = 99999;	// lans should not rate limit
-
-	// snaps command
-	val = Info_ValueForKey (cl->userinfo, "snaps");
-	if (strlen(val)) {
-		i = atoi(val);
-		if ( i < 1 ) {
-			i = 1;
-		} else if ( i > 30 ) {
-			i = 30;
-		}
-		cl->snapshotMsec = 1000/i;
-	} else {
-		cl->snapshotMsec = 50;
-	}
+	Q_strncpyz( cl->name, Info_ValueForKey( cl->userinfo, "name" ), sizeof( cl->name ) );
 }
 
 
@@ -316,14 +307,13 @@ SV_UpdateUserinfo_f
 static void SV_UpdateUserinfo_f( client_t *cl ) {
 	Q_strncpyz( cl->userinfo, Cmd_Argv(1), sizeof(cl->userinfo) );
 
+	SV_UserinfoChanged( cl );
 	// call prog code to allow overrides
 	ge->ClientUserinfoChanged( cl - svs.clients );
-	
-	SV_UserinfoChanged( cl );
 }
 
 typedef struct {
-	char	*name;
+	const char	*name;
 	void	(*func)( client_t *cl );
 } ucmd_t;
 
@@ -429,12 +419,12 @@ static void SV_UserMove( client_t *cl, msg_t *msg ) {
 	usercmd_t	nullcmd;
 	usercmd_t	cmds[MAX_PACKET_USERCMDS];
 	usercmd_t	*cmd, *oldcmd;
-	int			clientTime;
+	//int			clientTime;
 	int			serverId;
 
 	cl->reliableAcknowledge = MSG_ReadLong( msg );
 	serverId = MSG_ReadLong( msg );
-	clientTime = MSG_ReadLong( msg );
+	/*clientTime = */MSG_ReadLong( msg );
 	cl->deltaMessage = MSG_ReadLong( msg );
 
 	// cmdNum is the command number of the most recent included usercmd
@@ -476,14 +466,13 @@ static void SV_UserMove( client_t *cl, msg_t *msg ) {
 	if ( cl->state == CS_PRIMED ) {
 
 		SV_ClientEnterWorld( cl, &cmds[0], eSavedGameJustLoaded );
-#ifndef _XBOX	// No auto-saving for now?
 		if ( sv_mapname->string[0]!='_' )
 		{
 			char savename[MAX_QPATH];
 			if ( eSavedGameJustLoaded == eNO )
 			{
 				SG_WriteSavegame("auto",qtrue);
-				if ( strnicmp(sv_mapname->string, "academy", 7) != 0)
+				if ( Q_stricmpn(sv_mapname->string, "academy", 7) != 0)
 				{
 					Com_sprintf (savename, sizeof(savename), "auto_%s",sv_mapname->string);
 					SG_WriteSavegame(savename,qtrue);//can't use va becuase it's nested
@@ -496,7 +485,6 @@ static void SV_UserMove( client_t *cl, msg_t *msg ) {
 				SG_WriteSavegame( "auto", qfalse );//need a copy for auto, too
 			}
 		}
-#endif
 		eSavedGameJustLoaded = eNO;
 		// the moves can be processed normaly
 	}

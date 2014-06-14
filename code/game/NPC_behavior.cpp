@@ -1,3 +1,21 @@
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 //NPC_behavior.cpp
 /*
 FIXME - MCG:
@@ -6,10 +24,13 @@ things in a snapshot or just go through the snapshot every frame and save the in
 we need it...
 */
 
-// leave this line at the top for all NPC_xxxx.cpp files...
-#include "g_headers.h"
+#include "../qcommon/q_shared.h"
+#include "../cgame/cg_local.h"
 #include "g_navigator.h"
 #include "Q3_Interface.h"
+#include "b_local.h"
+#include "g_functions.h"
+#include "g_nav.h"
 
 extern cvar_t	*g_AIsurrender;
 extern	qboolean	showBBoxes;
@@ -306,7 +327,7 @@ void NPC_BSInvestigate (void)
 	if(	level.time < NPCInfo->walkDebounceTime )
 	{//walk toward investigateGoal
 		
-		/*
+		/ *
 		NPCInfo->goalEntity = NPCInfo->tempGoal;
 		VectorCopy(NPCInfo->investigateGoal, NPCInfo->tempGoal->currentOrigin);
 		*/
@@ -899,10 +920,14 @@ void NPC_BSJump (void)
 
 //		gi.Printf("apex is %4.2f percent from p1: ", (xy-z)*0.5/xy*100.0f);
 
-		xy -= z;
-		xy *= 0.5;
-		
-		assert(xy > 0);
+		// Don't need to set apex xy if NPC is jumping directly up.
+		if ( xy > 0.0f )
+		{
+			xy -= z;
+			xy *= 0.5;
+
+			assert(xy > 0);
+		}
 
 		VectorMA( p1, xy, dir, apex );
 		apex[2] += apexHeight;
@@ -1438,6 +1463,8 @@ qboolean NPC_CanSurrender( void )
 		case CLASS_PLAYER:
 		case CLASS_VEHICLE:
 			return qfalse;
+			break;
+		default:
 			break;
 		}
 		if ( !G_StandardHumanoid( NPC ) )

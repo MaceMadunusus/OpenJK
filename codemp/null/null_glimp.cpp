@@ -1,6 +1,6 @@
 #include "qcommon/q_shared.h"
-#include "renderer/tr_local.h"
-#ifdef __linux__
+#include "rd-common/tr_local.h"
+#if defined __linux__ || defined MACOS_X
 typedef unsigned int GLenum;
 #endif
 
@@ -26,6 +26,9 @@ void 		GLimp_Init( void )
 }
 
 void		GLimp_Shutdown( void ) {
+}
+
+void		GLimp_Minimize( void ) {
 }
 
 void		GLimp_EnableLogging( qboolean enable ) {

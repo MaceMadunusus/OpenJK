@@ -1,18 +1,23 @@
 // Tokenizer.cpp
 #ifndef NOT_USING_MODULES
 // !!! if you are not using modules, read BELOW !!!
-#include "Module.h" // if you are not using modules, 
+#include "module.h" // if you are not using modules,
 					// create an empty Module.h in your
 					// project -- use of modules allows
 					// the error handler to be overridden
 					// with a custom CErrHandler
 #endif
-#include "Tokenizer.h"
+#include "tokenizer.h"
 
 #pragma warning(disable : 4100) //unreferenced formal parameter
 #pragma warning(disable : 4127) //conditional expression is constant
 #pragma warning(disable : 4189) //local variable is initialized but not referenced
 #pragma warning(disable : 4244) //conversion from x to x, possible loss of data
+
+#ifndef _WIN32
+#include <stdio.h>
+#include <stdlib.h>
+#endif
 
 enum
 {
@@ -86,7 +91,7 @@ LPCTSTR CSymbol::GetName()
 	return m_symbolName;
 }
 
-void CSymbol::Init(LPCTSTR symbolName)
+void CSymbol::InitBaseSymbol(LPCTSTR symbolName)
 {
 	m_symbolName = (char*)malloc(strlen(symbolName) + 1);
 //	ASSERT(m_symbolName);
@@ -124,7 +129,7 @@ CDirectiveSymbol* CDirectiveSymbol::Create(LPCTSTR symbolName)
 
 void CDirectiveSymbol::Init(LPCTSTR symbolName)
 {
-	CSymbol::Init(symbolName);
+	CSymbol::InitBaseSymbol(symbolName);
 	m_value = NULL;
 }
 
@@ -175,7 +180,7 @@ void CIntSymbol::Delete()
 
 void CIntSymbol::Init(LPCTSTR symbolName, int value)
 {
-	CSymbol::Init(symbolName);
+	CSymbol::InitBaseSymbol(symbolName);
 	m_value = value;
 }
 
@@ -226,7 +231,7 @@ void CSymbolTable::Delete()
 bool CSymbolTable::AddSymbol(CSymbol* theSymbol)
 {
 	LPCTSTR name = theSymbol->GetName();
-	
+
 	symbolmap_t::iterator iter = m_symbols.find(name);
 	if (iter != m_symbols.end())
 	{
@@ -284,7 +289,7 @@ void CParseStream::Delete()
 	delete this;
 }
 
-bool CParseStream::Init()
+bool CParseStream::InitBaseStream()
 {
 	m_next = NULL;
 
@@ -368,7 +373,7 @@ bool CParsePutBack::NextChar(byte& theByte)
 
 void CParsePutBack::Init(byte theByte, int curLine, LPCTSTR filename)
 {
-	CParseStream::Init();
+	CParseStream::InitBaseStream();
 	m_consumed = false;
 	m_byte = theByte;
 	m_curLine = curLine;
@@ -377,7 +382,7 @@ void CParsePutBack::Init(byte theByte, int curLine, LPCTSTR filename)
 		m_curFile = (char*)malloc(strlen(filename) + 1);
 		strcpy(m_curFile, filename);
 	}
-	else 
+	else
 	{
 		m_curFile = NULL;
 	}
@@ -426,7 +431,7 @@ CParseFile::~CParseFile()
 CParseFile* CParseFile::Create()
 {
 	CParseFile* theParseFile = new CParseFile();
-	
+
 	if ( !theParseFile->Init() )
 	{
 		delete theParseFile;
@@ -439,7 +444,7 @@ CParseFile* CParseFile::Create()
 CParseFile* CParseFile::Create(LPCTSTR filename, CTokenizer* tokenizer)
 {
 	CParseFile* theParseFile = new CParseFile();
-	
+
 	if ( theParseFile->Init(filename, tokenizer) )
 		return theParseFile;
 
@@ -455,7 +460,11 @@ void CParseFile::Delete()
 	}
 	if (m_ownsFile && (m_fileHandle != NULL))
 	{
+#ifdef _WIN32
 		CloseHandle(m_fileHandle);
+#else
+		fclose(m_fileHandle);
+#endif
 		m_fileHandle = NULL;
 	}
 	if (m_fileName != NULL)
@@ -474,35 +483,47 @@ bool CParseFile::Init()
 	m_curByte = NULL;
 	m_curLine = 1;
 	m_fileName = NULL;
-	return CParseStream::Init();
+	return CParseStream::InitBaseStream();
 }
 
-DWORD CParseFile::GetFileSize()
+unsigned int CParseFile::GetFileSize()
 {
-	DWORD dwCur = SetFilePointer(m_fileHandle, 0L, NULL, FILE_CURRENT);
-	DWORD dwLen = SetFilePointer(m_fileHandle, 0, NULL, FILE_END);
+#ifdef _WIN32
+	unsigned int dwCur = SetFilePointer(m_fileHandle, 0L, NULL, FILE_CURRENT);
+	unsigned int dwLen = SetFilePointer(m_fileHandle, 0, NULL, FILE_END);
 	SetFilePointer(m_fileHandle, dwCur, NULL, FILE_BEGIN);
+#else
+	fseek(m_fileHandle, 0L, SEEK_END);
+	unsigned int dwLen = ftell(m_fileHandle);
+	fseek(m_fileHandle, 0L, SEEK_SET);
+#endif
 	return dwLen;
 }
 
 void CParseFile::Read(void* buff, UINT buffsize)
 {
-	DWORD bytesRead;
+	unsigned int bytesRead;
+#ifdef _WIN32
 	ReadFile(m_fileHandle, buff, buffsize, &bytesRead, NULL);
+#else
+	fread(buff, buffsize, 1, m_fileHandle);
+#endif
 }
 
 bool CParseFile::Init(LPCTSTR filename, CTokenizer* tokenizer)
 {
-	CParseStream::Init();
+	CParseStream::InitBaseStream();
 	m_fileName = (char*)malloc(strlen(filename) + 1);
 	strcpy(m_fileName, filename);
-		DWORD dwAccess = GENERIC_READ;
-		DWORD dwShareMode = FILE_SHARE_WRITE | FILE_SHARE_READ;
+
+#ifdef _WIN32
+		unsigned int dwAccess = GENERIC_READ;
+		unsigned int dwShareMode = FILE_SHARE_WRITE | FILE_SHARE_READ;
 		SECURITY_ATTRIBUTES sa;
 		sa.nLength = sizeof(sa);
 		sa.lpSecurityDescriptor = NULL;
 		sa.bInheritHandle = 0;
-		DWORD dwCreateFlag = OPEN_EXISTING;
+		unsigned int dwCreateFlag = OPEN_EXISTING;
 
 		m_fileHandle = CreateFile(filename, dwAccess, dwShareMode, &sa, dwCreateFlag, FILE_ATTRIBUTE_NORMAL, NULL);
 
@@ -511,9 +532,19 @@ bool CParseFile::Init(LPCTSTR filename, CTokenizer* tokenizer)
 			tokenizer->Error(TKERR_INCLUDE_FILE_NOTFOUND);
 			Init();
 
-			return false;			
+			return false;
 		}
+#else
+		m_fileHandle = fopen(filename, "r+");
 
+		if (m_fileHandle == NULL)
+		{
+			tokenizer->Error(TKERR_INCLUDE_FILE_NOTFOUND);
+			Init();
+
+			return false;
+		}
+#endif
 		m_filesize = GetFileSize();
 		m_buff = (byte*)malloc(m_filesize);
 		if (m_buff == NULL)
@@ -817,7 +848,7 @@ CToken::~CToken()
 CToken* CToken::Create()
 {
 	CToken* theToken = new CToken();
-	theToken->Init();
+	theToken->InitBaseToken();
 	return theToken;
 }
 
@@ -831,7 +862,7 @@ void CToken::Delete()
 	delete this;
 }
 
-void CToken::Init()
+void CToken::InitBaseToken()
 {
 	m_next = NULL;
 	m_string = NULL;
@@ -897,7 +928,7 @@ void CCharToken::Delete()
 
 void CCharToken::Init(byte theByte)
 {
-	CToken::Init();
+	CToken::InitBaseToken();
 	char charString[10];
 	switch(theByte)
 	{
@@ -974,7 +1005,7 @@ void CStringToken::Delete()
 
 void CStringToken::Init(LPCTSTR theString)
 {
-	CToken::Init();
+	CToken::InitBaseToken();
 	m_string = (char*)malloc(strlen(theString) + 1);
 //	ASSERT(m_string);
 	strcpy(m_string, theString);
@@ -1011,7 +1042,7 @@ void CIntToken::Delete()
 
 void CIntToken::Init(long value)
 {
-	CToken::Init();
+	CToken::InitBaseToken();
 	m_value = value;
 }
 
@@ -1070,7 +1101,7 @@ void CFloatToken::Delete()
 
 void CFloatToken::Init(float value)
 {
-	CToken::Init();
+	CToken::InitBaseToken();
 	m_value = value;
 }
 
@@ -1124,7 +1155,7 @@ void CIdentifierToken::Delete()
 
 void CIdentifierToken::Init(LPCTSTR name)
 {
-	CToken::Init();
+	CToken::InitBaseToken();
 	m_string = (char*)malloc(strlen(name) + 1);
 //	ASSERT(m_string);
 	strcpy(m_string, name);
@@ -1161,7 +1192,7 @@ void CCommentToken::Delete()
 
 void CCommentToken::Init(LPCTSTR name)
 {
-	CToken::Init();
+	CToken::InitBaseToken();
 	m_string = (char*)malloc(strlen(name) + 1);
 //	ASSERT(m_string);
 	strcpy(m_string, name);
@@ -1198,7 +1229,7 @@ void CUserToken::Delete()
 
 void CUserToken::Init(int value, LPCTSTR string)
 {
-	CToken::Init();
+	CToken::InitBaseToken();
 	m_value = value;
 	m_string = (char*)malloc(strlen(string) + 1);
 	strcpy(m_string, string);
@@ -1235,7 +1266,7 @@ void CUndefinedToken::Delete()
 
 void CUndefinedToken::Init(LPCTSTR string)
 {
-	CToken::Init();
+	CToken::InitBaseToken();
 	m_string = (char*)malloc(strlen(string) + 1);
 	strcpy(m_string, string);
 }
@@ -1467,7 +1498,7 @@ void CTokenizer::Error(LPCTSTR errString, int theError)
 		m_errorProc(errString);
 	}
 #ifdef USES_MODULES
-	else 
+	else
 	{
 		ReportError(theError, errString);
 	}
@@ -1633,7 +1664,7 @@ CToken* CTokenizer::GetToEndOfLine(int tokenType)
 	//	the default string size of only 128 chars...
 	//
 	if (tokenType == TK_STRING)
-	{		
+	{
 		#define iRETURN_STRING_SIZE 2048
 		char theString[iRETURN_STRING_SIZE];
 		theString[0] = ' ';
@@ -1650,15 +1681,15 @@ CToken* CTokenizer::GetToEndOfLine(int tokenType)
 			}
 			theString[i] = '\0';
 
-			return CStringToken::Create(theString);			
+			return CStringToken::Create(theString);
 		}
 
 		// line would maks a string too big to fit in buffer...
-		//			
+		//
 		Error(TKERR_STRINGLENGTHEXCEEDED);
 	}
 	else
-	{		
+	{
 		char theString[MAX_IDENTIFIER_LENGTH];
 		theString[0] = ' ';
 		while (theString[0] == ' ')
@@ -1689,7 +1720,7 @@ CToken* CTokenizer::GetToEndOfLine(int tokenType)
 			}
 		}
 		Error(TKERR_IDENTIFIERLENGTHEXCEEDED);
-	}	
+	}
 	return NULL;
 }
 

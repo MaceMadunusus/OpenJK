@@ -1,3 +1,21 @@
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 // Filename:-	cl_mp3.cpp
 //
 // (The interface module between all the MP3 stuff and Trek)
@@ -271,7 +289,7 @@ qboolean MP3Stream_InitFromFile( sfx_t* sfx, byte *pbSrcData, int iSrcDatalen, c
 		
 		// now init the low-level MP3 stuff...
 		//
-		MP3STREAM SFX_MP3Stream = {0};	// important to init to all zeroes!
+		MP3STREAM SFX_MP3Stream = {};	// important to init to all zeroes!
 		char *psError = C_MP3Stream_DecodeInit( &SFX_MP3Stream, /*sfx->data*/ /*sfx->soundData*/ pbSrcData, iSrcDatalen,
 												dma.speed,//(s_khz->value == 44)?44100:(s_khz->value == 22)?22050:11025,
 												2/*sfx->width*/ * 8,

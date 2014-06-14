@@ -1,3 +1,21 @@
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 // cg_localents.c -- every frame, generate renderer commands for locally
 // processed entities, like smoke puffs, gibs, shells, etc.
 
@@ -7,11 +25,7 @@
 
 #include "cg_media.h"
 
-#ifdef _XBOX
-#define	MAX_LOCAL_ENTITIES	128
-#else
 #define	MAX_LOCAL_ENTITIES	512
-#endif
 localEntity_t	cg_localEntities[MAX_LOCAL_ENTITIES];
 localEntity_t	cg_activeLocalEntities;		// double linked list
 localEntity_t	*cg_freeLocalEntities;		// single linked list
@@ -118,6 +132,8 @@ void CG_FragmentBounceSound( localEntity_t *le, trace_t *trace )
 			break;
 		case LEBS_METAL:
 			s = cgs.media.metalBounceSound[Q_irand(0,1)];// FIXME: make sure that this sound is registered properly...might still be rock bounce sound....
+			break;
+		default:
 			break;
 		}
 

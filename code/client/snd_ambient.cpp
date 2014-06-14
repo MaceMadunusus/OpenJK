@@ -1,17 +1,33 @@
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 // Ambient Sound System (ASS!)
 
 // leave this as first line for PCH reasons...
 //
 #include "../server/exe_headers.h"
 
+#ifdef _MSC_VER
 #pragma warning ( disable : 4710 )	//not inlined
+#endif
 #include "client.h"
 #include "snd_ambient.h"
-#ifdef _XBOX
-#include "snd_local_console.h"
-#else
 #include "snd_local.h"
-#endif
 
 static const int MAX_SET_VOLUME =	255;
 
@@ -78,15 +94,14 @@ CSetGroup::CSetGroup(void)
 {
 	m_ambientSets = new vector<ambientSet_t*>;
 	m_setMap = new map<sstring_t, ambientSet_t*>;
+	m_numSets = 0;
 }
 
 
 CSetGroup::~CSetGroup(void)
 {
 	delete m_ambientSets;
-	m_ambientSets = 0;
 	delete m_setMap;
-	m_setMap = 0;
 }
 
 /*
@@ -200,12 +215,12 @@ AS_GetSetNameIDForString
 static int AS_GetSetNameIDForString( const char *name )
 {
 	//Make sure it's valid
-	if ( name == NULL || name[0] == NULL )
+	if ( name == NULL || name[0] == '\0' )
 		return -1;
 
 	for ( int i = 0; i < NUM_AS_SETS; i++ )
 	{
-		if ( stricmp( name, setNames[i] ) == 0 )
+		if ( Q_stricmp( name, setNames[i] ) == 0 )
 			return i;
 	}
 
@@ -221,12 +236,12 @@ AS_GetKeywordIDForString
 static int AS_GetKeywordIDForString( const char *name )
 {
 	//Make sure it's valid
-	if ( name == NULL || name[0] == NULL )
+	if ( name == NULL || name[0] == '\0' )
 		return -1;
 
 	for ( int i = 0; i < NUM_AS_KEYWORDS; i++ )
 	{
-		if ( stricmp( name, keywordNames[i] ) == 0 )
+		if ( Q_stricmp( name, keywordNames[i] ) == 0 )
 			return i;
 	}
 
@@ -270,7 +285,7 @@ static void AS_GetTimeBetweenWaves( ambientSet_t &set )
 	int		startTime, endTime;
 
 	//Get the data
-	sscanf( parseBuffer+parsePos, "%s %d %d", &tempBuffer, &startTime, &endTime );
+	sscanf( parseBuffer+parsePos, "%s %d %d", tempBuffer, &startTime, &endTime );
 
 	//Check for swapped start / end
 	if ( startTime > endTime )
@@ -304,7 +319,7 @@ static void AS_GetSubWaves( ambientSet_t &set )
 	char	dirBuffer[512], waveBuffer[256], waveName[1024];
 
 	//Get the directory for these sets
-	sscanf( parseBuffer+parsePos, "%s %s", &tempBuffer, &dirBuffer );	
+	sscanf( parseBuffer+parsePos, "%s %s", tempBuffer, dirBuffer );	
 
 	//Move the pointer past these two strings
 	parsePos += ((strlen(keywordNames[SET_KEYWORD_SUBWAVES])+1) + (strlen(dirBuffer)+1));
@@ -313,9 +328,9 @@ static void AS_GetSubWaves( ambientSet_t &set )
 	while ( parsePos <= parseSize )
 	{
 		//Get the data
-		sscanf( parseBuffer+parsePos, "%s", &waveBuffer );
+		sscanf( parseBuffer+parsePos, "%s", waveBuffer );
 
-		if ( set.numSubWaves > MAX_WAVES_PER_GROUP )
+		if ( set.numSubWaves >= MAX_WAVES_PER_GROUP )
 		{
 			#ifndef FINAL_BUILD
 			Com_Printf(S_COLOR_YELLOW"WARNING: Too many subwaves on set \"%s\"\n", set.name );
@@ -324,11 +339,7 @@ static void AS_GetSubWaves( ambientSet_t &set )
 		else
 		{
 			//Construct the wave name (pretty, huh?)
-			strcpy( (char *) waveName, "sound/" );
-			strncat( (char *) waveName, (const char *) dirBuffer, 1024 );
-			strncat( (char *) waveName, "/", 512 );
-			strncat( (char *) waveName, (const char *) waveBuffer, 512 );
-			strncat( (char *) waveName, ".wav", 512 );
+			Com_sprintf( waveName, sizeof(waveName), "sound/%s/%s.wav", dirBuffer, waveBuffer );
 			
 			//Place this onto the sound directory name
 
@@ -336,8 +347,7 @@ static void AS_GetSubWaves( ambientSet_t &set )
 			if ( ( set.subWaves[set.numSubWaves++] = S_RegisterSound( waveName ) ) <= 0 )
 			{
 				#ifndef FINAL_BUILD
-				//Com_Printf(S_COLOR_RED"ERROR: Unable to load ambient sound \"%s\"\n", waveName);
-				Com_Error(ERR_DROP, "ERROR: Unable to load ambient sound \"%s\"\n", waveName);
+				Com_Printf(S_COLOR_RED"ERROR: Unable to load ambient sound \"%s\"\n", waveName);
 				#endif
 			}
 		}
@@ -365,19 +375,16 @@ static void AS_GetLoopedWave( ambientSet_t &set )
 	char	waveBuffer[256], waveName[1024];
 
 	//Get the looped wave name
-	sscanf( parseBuffer+parsePos, "%s %s", &tempBuffer, &waveBuffer );
+	sscanf( parseBuffer+parsePos, "%s %s", tempBuffer, waveBuffer );
 
 	//Construct the wave name
-	strcpy( (char *) waveName, "sound/" );
-	strncat( (char *) waveName, (const char *) waveBuffer, 1024 );
-	strncat( (char *) waveName, ".wav", 1024 );
+	Com_sprintf( waveName, sizeof(waveName), "sound/%s.wav", waveBuffer );
 	
 	//Precache the file at this point and store off the ID instead of the name
 	if ( ( set.loopedWave = S_RegisterSound( waveName ) ) <= 0 )
 	{
 		#ifndef FINAL_BUILD
-		//Com_Printf(S_COLOR_RED"ERROR: Unable to load ambient sound \"%s\"\n", waveName);
-		Com_Error(ERR_DROP, "ERROR: Unable to load looped ambient sound \"%s\"\n", waveName);
+		Com_Printf(S_COLOR_RED"ERROR: Unable to load ambient sound \"%s\"\n", waveName);
 		#endif
 	}
 
@@ -395,7 +402,7 @@ static void AS_GetVolumeRange( ambientSet_t &set )
 	int		min, max;
 
 	//Get the data
-	sscanf( parseBuffer+parsePos, "%s %d %d", &tempBuffer, &min, &max );
+	sscanf( parseBuffer+parsePos, "%s %d %d", tempBuffer, &min, &max );
 
 	//Check for swapped min / max
 	if ( min > max )
@@ -425,7 +432,7 @@ AS_GetRadius
 static void AS_GetRadius( ambientSet_t &set )
 {
 	//Get the data
-	sscanf( parseBuffer+parsePos, "%s %d", &tempBuffer, &set.radius );
+	sscanf( parseBuffer+parsePos, "%s %d", tempBuffer, &set.radius );
 
 	AS_SkipLine();
 }
@@ -443,7 +450,7 @@ static void AS_GetGeneralSet( ambientSet_t &set )
 	//The other parameters of the set come in a specific order
 	while ( parsePos <= parseSize )
 	{
-		int iFieldsScanned = sscanf( parseBuffer+parsePos, "%s", &tempBuffer );
+		int iFieldsScanned = sscanf( parseBuffer+parsePos, "%s", tempBuffer );
 		if (iFieldsScanned <= 0)
 			return;
 
@@ -502,7 +509,7 @@ static void AS_GetLocalSet( ambientSet_t &set )
 	//The other parameters of the set come in a specific order
 	while ( parsePos <= parseSize )
 	{
-		int iFieldsScanned = sscanf( parseBuffer+parsePos, "%s", &tempBuffer );
+		int iFieldsScanned = sscanf( parseBuffer+parsePos, "%s", tempBuffer );
 		if (iFieldsScanned <= 0)
 			return;
 
@@ -565,7 +572,7 @@ static void AS_GetBModelSet( ambientSet_t &set )
 	//The other parameters of the set come in a specific order
 	while ( parsePos <= parseSize )
 	{
-		int iFieldsScanned = sscanf( parseBuffer+parsePos, "%s", &tempBuffer );
+		int iFieldsScanned = sscanf( parseBuffer+parsePos, "%s", tempBuffer );
 		if (iFieldsScanned <= 0)
 			return;
 
@@ -613,7 +620,7 @@ static qboolean AS_ParseSet( int setID, CSetGroup *sg )
 	const char		*name;
 
 	//Make sure we're not overstepping the name array
-	if ( setID > NUM_AS_SETS )
+	if ( setID >= NUM_AS_SETS )
 		return qfalse;
 
 	//Reset the pointers for this run through
@@ -625,7 +632,7 @@ static qboolean AS_ParseSet( int setID, CSetGroup *sg )
 	while ( parsePos <= parseSize )
 	{
 		//Check for a valid set group
-		if ( strncmp( parseBuffer+parsePos, name, strlen(name) ) == 0 )
+		if ( Q_strncmp( parseBuffer+parsePos, name, strlen(name) ) == 0 )
 		{
 			//Update the debug info
 			numSets++;	
@@ -634,7 +641,7 @@ static qboolean AS_ParseSet( int setID, CSetGroup *sg )
 			parsePos+=strlen(name)+1;	//Also take the following space out
 
 			//Get the set name (this MUST be first)
-			sscanf( parseBuffer+parsePos, "%s", &tempBuffer );
+			sscanf( parseBuffer+parsePos, "%s", tempBuffer );
 			AS_SkipLine();
 	
 			//Test the string against the precaches
@@ -675,16 +682,16 @@ static void AS_ParseHeader( void )
 
 	while ( parsePos <= parseSize )
 	{
-		sscanf( parseBuffer+parsePos, "%s", &tempBuffer );
+		sscanf( parseBuffer+parsePos, "%s", tempBuffer );
 
 		keywordID = AS_GetKeywordIDForString( (const char *) &tempBuffer );
 
 		switch ( keywordID )
 		{
 		case SET_KEYWORD_TYPE:
-			sscanf( parseBuffer+parsePos, "%s %s", &tempBuffer, &typeBuffer );
+			sscanf( parseBuffer+parsePos, "%s %s", tempBuffer, typeBuffer );
 
-			if ( !stricmp( (const char *) typeBuffer, "ambientSet" ) )
+			if ( !Q_stricmp( (const char *) typeBuffer, "ambientSet" ) )
 			{
 				return;
 			}
@@ -789,7 +796,7 @@ void AS_AddPrecacheEntry( const char *name )
 	{
 		return;
 	}
-	if (!stricmp(name,"#clear"))
+	if (!Q_stricmp(name,"#clear"))
 	{
 		pMap->clear();
 		currentSet	= -1;
@@ -811,7 +818,7 @@ Called on the client side to load and precache all the ambient sound sets
 
 void AS_ParseSets( void )
 {
-	cvar_t	*cv = Cvar_Get ("s_initsound", "1", CVAR_ROM);
+	cvar_t	*cv = Cvar_Get ("s_initsound", "1", 0);
 	if ( !cv->integer ) {
 		return;
 	}

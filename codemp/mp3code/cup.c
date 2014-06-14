@@ -1,5 +1,5 @@
 /*____________________________________________________________________________
-	
+
 	FreeAmp - The Free MP3 Player
 
         MP3 Decoder originally Copyright (C) 1995-1997 Xing Technology
@@ -20,7 +20,7 @@
 	You should have received a copy of the GNU General Public License
 	along with this program; if not, write to the Free Software
 	Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-	
+
 	$Id: cup.c,v 1.3 1999/10/19 07:13:08 elrod Exp $
 ____________________________________________________________________________*/
 
@@ -542,5 +542,5 @@ IN_OUT L2audio_decode(unsigned char *bs, signed short *pcm)
 /*-------------------------------------------------------------------------*/
 #define COMPILE_ME
 #include "cupini.c"		/* initialization */
-#include "cupL1.c"		/* Layer I */
+#include "cupl1.c"		/* Layer I */
 /*-------------------------------------------------------------------------*/

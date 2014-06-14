@@ -1,3 +1,21 @@
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 // this include must remain at the top of every CPP file
 #include "common_headers.h"
 
@@ -6,16 +24,6 @@
 #endif
 
 #include "cg_media.h"
-
-#pragma warning(disable: 4035)
-static long myftol( float f ) 
-{
-	static int tmp;
-	__asm fld f
-	__asm fistp tmp
-	__asm mov eax, tmp
-}
-#pragma warning(default: 4035)
 
 extern int drawnFx;
 extern int mParticles;
@@ -34,7 +42,7 @@ void ClampVec( vec3_t dat, byte *res )
 	// clamp all vec values, then multiply the normalized values by 255 to maximize the result
 	for ( int i = 0; i < 3; i++ )
 	{
-		r = myftol(dat[i] * 255.0f);
+		r = Q_ftol(dat[i] * 255.0f);
 
 		if ( r < 0 )
 		{
@@ -169,12 +177,14 @@ bool CParticle::Update()
 		if (mModelNum>=0 && mBoltNum>=0)	//bolt style
 		{
 			const centity_t &cent = cg_entities[mClientID];
-			if (cent.gent->ghoul2.IsValid())
+			if (!cent.gent->ghoul2.IsValid())
 			{
-				if (!theFxHelper.GetOriginAxisFromBolt(cent, mModelNum, mBoltNum, org, ax))
-				{	//could not get bolt
-					return false;
-				}
+				return false;
+			}
+
+			if (!theFxHelper.GetOriginAxisFromBolt(cent, mModelNum, mBoltNum, org, ax))
+			{	//could not get bolt
+				return false;
 			}
 		}
 		else
@@ -669,12 +679,14 @@ bool COrientedParticle::Update()
 		if (mModelNum>=0 && mBoltNum>=0)	//bolt style
 		{
 			const centity_t &cent = cg_entities[mClientID];
-			if (cent.gent->ghoul2.IsValid())
+			if (!cent.gent->ghoul2.IsValid())
 			{
-				if (!theFxHelper.GetOriginAxisFromBolt(cent, mModelNum, mBoltNum, org, ax))
-				{	//could not get bolt
-					return false;
-				}
+				return false;
+			}
+
+			if (!theFxHelper.GetOriginAxisFromBolt(cent, mModelNum, mBoltNum, org, ax))
+			{	//could not get bolt
+				return false;
 			}
 		}
 		else
@@ -778,17 +790,19 @@ bool CLine::Update()
 			return false;
 		}
 
-		vec3_t	ax[3] = {0};
+		vec3_t	ax[3] = {};
 		// Get our current position and direction
 		if (mModelNum>=0 && mBoltNum>=0)	//bolt style
 		{
 			const centity_t &cent = cg_entities[mClientID];
-			if (cent.gent->ghoul2.IsValid())
+			if (!cent.gent->ghoul2.IsValid())
 			{
-				if (!theFxHelper.GetOriginAxisFromBolt(cent, mModelNum, mBoltNum, mOrigin1, ax))
-				{	//could not get bolt
-					return false;
-				}
+				return false;
+			}
+
+			if (!theFxHelper.GetOriginAxisFromBolt(cent, mModelNum, mBoltNum, mOrigin1, ax))
+			{	//could not get bolt
+				return false;
 			}
 		}
 		else
@@ -895,17 +909,19 @@ bool CElectricity::Update()
 			return false;
 		}
 
-		vec3_t	ax[3] = {0};
+		vec3_t	ax[3] = {};
 		// Get our current position and direction
 		if (mModelNum>=0 && mBoltNum>=0)	//bolt style
 		{
 			const centity_t &cent = cg_entities[mClientID];
-			if (cent.gent->ghoul2.IsValid())
+			if (!cent.gent->ghoul2.IsValid())
 			{
-				if (!theFxHelper.GetOriginAxisFromBolt(cent, mModelNum, mBoltNum, mOrigin1, ax))
-				{	//could not get bolt
-					return false;
-				}
+				return false;
+			}
+
+			if (!theFxHelper.GetOriginAxisFromBolt(cent, mModelNum, mBoltNum, mOrigin1, ax))
+			{	//could not get bolt
+				return false;
 			}
 		}
 		else
@@ -998,12 +1014,14 @@ bool CTail::Update()
 		if (mModelNum>=0 && mBoltNum>=0)	//bolt style
 		{
 			const centity_t &cent = cg_entities[mClientID];
-			if (cent.gent->ghoul2.IsValid())
+			if (!cent.gent->ghoul2.IsValid())
 			{
-				if (!theFxHelper.GetOriginAxisFromBolt(cent, mModelNum, mBoltNum, org, ax))
-				{	//could not get bolt
-					return false;
-				}
+				return false;
+			}
+
+			if (!theFxHelper.GetOriginAxisFromBolt(cent, mModelNum, mBoltNum, org, ax))
+			{	//could not get bolt
+				return false;
 			}
 		}
 		else
@@ -1268,17 +1286,19 @@ bool CCylinder::Update()
 			return false;
 		}
 
-		vec3_t	ax[3] = {0};
+		vec3_t	ax[3] = {};
 		// Get our current position and direction
 		if (mModelNum>=0 && mBoltNum>=0)	//bolt style
 		{
 			const centity_t &cent = cg_entities[mClientID];
-			if (cent.gent->ghoul2.IsValid())
+			if (!cent.gent->ghoul2.IsValid())
 			{
-				if (!theFxHelper.GetOriginAxisFromBolt(cent, mModelNum, mBoltNum, mOrigin1, ax))
-				{	//could not get bolt
-					return false;
-				}
+				return false;
+			}
+
+			if (!theFxHelper.GetOriginAxisFromBolt(cent, mModelNum, mBoltNum, mOrigin1, ax))
+			{	//could not get bolt
+				return false;
 			}
 		}
 		else
@@ -1863,10 +1883,8 @@ void CPoly::Draw()
 		VectorAdd( mOrigin1, mOrg[i], verts[i].xyz );
 
 		// Assign the same color to each vert
-		verts[i].modulate[0] = mRefEnt.shaderRGBA[0];
-		verts[i].modulate[1] = mRefEnt.shaderRGBA[1];
-		verts[i].modulate[2] = mRefEnt.shaderRGBA[2];
-		verts[i].modulate[3] = mRefEnt.shaderRGBA[3];
+		for ( int k=0; k<4; k++ )
+			verts[i].modulate[k] = mRefEnt.shaderRGBA[k];
 
 		// Copy the ST coords
 		Vector2Copy( mST[i], verts[i].st );
@@ -2261,6 +2279,10 @@ void CFlash::Init( void )
 //----------------------------
 void CFlash::Draw( void )	
 {
+    // Interestingly, if znear is set > than this, then the flash
+    // doesn't appear at all.
+    const float FLASH_DISTANCE_FROM_VIEWER = 8.0f;
+
 	mRefEnt.reType = RT_SPRITE;
 
 	for ( int i = 0; i < 3; i++ )
@@ -2280,8 +2302,10 @@ void CFlash::Draw( void )
 	mRefEnt.shaderRGBA[3] = 255;
 
 	VectorCopy( cg.refdef.vieworg, mRefEnt.origin );
-	VectorMA( mRefEnt.origin, 8, cg.refdef.viewaxis[0], mRefEnt.origin );
-	mRefEnt.radius = 12.0f;
+	VectorMA( mRefEnt.origin, FLASH_DISTANCE_FROM_VIEWER, cg.refdef.viewaxis[0], mRefEnt.origin );
+	
+    // This is assuming that the screen is wider than it is tall.
+    mRefEnt.radius = FLASH_DISTANCE_FROM_VIEWER * tan (DEG2RAD (cg.refdef.fov_x * 0.5f));
 
 	theFxHelper.AddFxToScene( &mRefEnt );
 

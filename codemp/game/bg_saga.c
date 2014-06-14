@@ -5,28 +5,24 @@
  *
  * desc:		Siege module, shared for game, cgame, and ui.
  *
- * $Author: osman $ 
+ * $Author: osman $
  * $Revision: 1.9 $
  *
  *****************************************************************************/
 #include "qcommon/q_shared.h"
+#include "bg_public.h"
 #include "bg_saga.h"
 #include "bg_weapons.h"
-#include "bg_public.h"
+
+#ifdef _GAME
+	#include "g_local.h"
+#elif _CGAME
+	#include "cgame/cg_local.h"
+#elif _UI
+	#include "ui/ui_local.h"
+#endif
 
 #define SIEGECHAR_TAB 9 //perhaps a bit hacky, but I don't think there's any define existing for "tab"
-
-//Could use strap stuff but I don't particularly care at the moment anyway.
-
-extern int	trap_FS_FOpenFile( const char *qpath, fileHandle_t *f, fsMode_t mode );
-extern void	trap_FS_Read( void *buffer, int len, fileHandle_t f );
-extern void	trap_FS_Write( const void *buffer, int len, fileHandle_t f );
-extern void	trap_FS_FCloseFile( fileHandle_t f );
-extern int	trap_FS_GetFileList(  const char *path, const char *extension, char *listbuf, int bufsize );
-
-#ifndef QAGAME //cgame, ui
-qhandle_t	trap_R_RegisterShaderNoMip( const char *name );
-#endif
 
 char		siege_info[MAX_SIEGE_INFO_SIZE];
 int			siege_valid = 0;
@@ -659,7 +655,7 @@ void BG_SiegeTranslateForcePowers(char *buf, siegeClass_t *siegeClass)
 
 				if (!Q_stricmp(checkPower, "FP_JUMP"))
 				{ //haqery
-                    strcpy(checkPower, "FP_LEVITATION");
+					Q_strncpyz(checkPower, "FP_LEVITATION", sizeof(checkPower));
 				}
 
 				while (FPTable[k].id != -1 && FPTable[k].name[0])
@@ -756,7 +752,6 @@ char *classTitles[SPC_MAX] =
 "heavy_weapons",	// SPC_HEAVY_WEAPONS
 };
 
-
 void BG_SiegeParseClassFile(const char *filename, siegeClassDesc_t *descBuffer)
 {
 	fileHandle_t f;
@@ -765,16 +760,16 @@ void BG_SiegeParseClassFile(const char *filename, siegeClassDesc_t *descBuffer)
 	char classInfo[4096];
 	char parseBuf[4096];
 
-	len = trap_FS_FOpenFile(filename, &f, FS_READ);
+	len = trap->FS_Open( filename, &f, FS_READ );
 
 	if (!f || len >= 4096)
 	{
 		return;
 	}
 
-	trap_FS_Read(classInfo, len, f);
+	trap->FS_Read( classInfo, len, f );
 
-	trap_FS_FCloseFile(f);
+	trap->FS_Close( f );
 
 	classInfo[len] = 0;
 
@@ -783,7 +778,7 @@ void BG_SiegeParseClassFile(const char *filename, siegeClassDesc_t *descBuffer)
 	{
 		if (!BG_SiegeGetPairedValue(classInfo, "description", descBuffer->desc))
 		{
-			strcpy(descBuffer->desc, "DESCRIPTION UNAVAILABLE");
+			Q_strncpyz(descBuffer->desc, "DESCRIPTION UNAVAILABLE", sizeof(descBuffer->desc));
 		}
 
 		//Hit this assert?  Memory has already been trashed.  Increase
@@ -796,7 +791,7 @@ void BG_SiegeParseClassFile(const char *filename, siegeClassDesc_t *descBuffer)
 	//Parse name
 	if (BG_SiegeGetPairedValue(classInfo, "name", parseBuf))
 	{
-		strcpy(bgSiegeClasses[bgNumSiegeClasses].name, parseBuf);
+		Q_strncpyz(bgSiegeClasses[bgNumSiegeClasses].name, parseBuf, sizeof(bgSiegeClasses[0].name));
 	}
 	else
 	{
@@ -806,7 +801,7 @@ void BG_SiegeParseClassFile(const char *filename, siegeClassDesc_t *descBuffer)
 	//Parse forced model
 	if (BG_SiegeGetPairedValue(classInfo, "model", parseBuf))
 	{
-		strcpy(bgSiegeClasses[bgNumSiegeClasses].forcedModel, parseBuf);
+		Q_strncpyz(bgSiegeClasses[bgNumSiegeClasses].forcedModel, parseBuf, sizeof(bgSiegeClasses[0].forcedModel));
 	}
 	else
 	{ //It's ok if there isn't one, it's optional.
@@ -816,7 +811,7 @@ void BG_SiegeParseClassFile(const char *filename, siegeClassDesc_t *descBuffer)
 	//Parse forced skin
 	if (BG_SiegeGetPairedValue(classInfo, "skin", parseBuf))
 	{
-		strcpy(bgSiegeClasses[bgNumSiegeClasses].forcedSkin, parseBuf);
+		Q_strncpyz(bgSiegeClasses[bgNumSiegeClasses].forcedSkin, parseBuf, sizeof(bgSiegeClasses[0].forcedSkin));
 	}
 	else
 	{ //It's ok if there isn't one, it's optional.
@@ -826,7 +821,7 @@ void BG_SiegeParseClassFile(const char *filename, siegeClassDesc_t *descBuffer)
 	//Parse first saber
 	if (BG_SiegeGetPairedValue(classInfo, "saber1", parseBuf))
 	{
-		strcpy(bgSiegeClasses[bgNumSiegeClasses].saber1, parseBuf);
+		Q_strncpyz(bgSiegeClasses[bgNumSiegeClasses].saber1, parseBuf, sizeof(bgSiegeClasses[0].saber1));
 	}
 	else
 	{ //It's ok if there isn't one, it's optional.
@@ -836,7 +831,7 @@ void BG_SiegeParseClassFile(const char *filename, siegeClassDesc_t *descBuffer)
 	//Parse second saber
 	if (BG_SiegeGetPairedValue(classInfo, "saber2", parseBuf))
 	{
-		strcpy(bgSiegeClasses[bgNumSiegeClasses].saber2, parseBuf);
+		Q_strncpyz(bgSiegeClasses[bgNumSiegeClasses].saber2, parseBuf, sizeof(bgSiegeClasses[0].saber2));
 	}
 	else
 	{ //It's ok if there isn't one, it's optional.
@@ -976,16 +971,16 @@ void BG_SiegeParseClassFile(const char *filename, siegeClassDesc_t *descBuffer)
 	//Parse shader for ui to use
 	if (BG_SiegeGetPairedValue(classInfo, "uishader", parseBuf))
 	{
-#ifdef QAGAME
-		bgSiegeClasses[bgNumSiegeClasses].uiPortraitShader = 0;
-		memset(bgSiegeClasses[bgNumSiegeClasses].uiPortrait,0,sizeof(bgSiegeClasses[bgNumSiegeClasses].uiPortrait));
-#elif defined CGAME
-		bgSiegeClasses[bgNumSiegeClasses].uiPortraitShader = 0;
-		memset(bgSiegeClasses[bgNumSiegeClasses].uiPortrait,0,sizeof(bgSiegeClasses[bgNumSiegeClasses].uiPortrait));
-#else //ui
-		bgSiegeClasses[bgNumSiegeClasses].uiPortraitShader = trap_R_RegisterShaderNoMip(parseBuf);
-		memcpy(bgSiegeClasses[bgNumSiegeClasses].uiPortrait,parseBuf,sizeof(bgSiegeClasses[bgNumSiegeClasses].uiPortrait));
-#endif
+		#if defined(_GAME)
+			bgSiegeClasses[bgNumSiegeClasses].uiPortraitShader = 0;
+			memset(bgSiegeClasses[bgNumSiegeClasses].uiPortrait,0,sizeof(bgSiegeClasses[bgNumSiegeClasses].uiPortrait));
+		#elif defined(_CGAME)
+			bgSiegeClasses[bgNumSiegeClasses].uiPortraitShader = 0;
+			memset(bgSiegeClasses[bgNumSiegeClasses].uiPortrait,0,sizeof(bgSiegeClasses[bgNumSiegeClasses].uiPortrait));
+		#elif defined(_UI) //ui
+			bgSiegeClasses[bgNumSiegeClasses].uiPortraitShader = trap->R_RegisterShaderNoMip(parseBuf);
+			memcpy(bgSiegeClasses[bgNumSiegeClasses].uiPortrait,parseBuf,sizeof(bgSiegeClasses[bgNumSiegeClasses].uiPortrait));
+		#endif
 	}
 	else
 	{ //I guess this is an essential.. we don't want to render bad shaders or anything.
@@ -995,28 +990,32 @@ void BG_SiegeParseClassFile(const char *filename, siegeClassDesc_t *descBuffer)
 	//Parse shader for ui to use
 	if (BG_SiegeGetPairedValue(classInfo, "class_shader", parseBuf))
 	{
-#ifdef QAGAME
+	#ifdef _GAME
 		bgSiegeClasses[bgNumSiegeClasses].classShader = 0;
-#else //cgame, ui
-		bgSiegeClasses[bgNumSiegeClasses].classShader = trap_R_RegisterShaderNoMip(parseBuf);
+	#else //cgame, ui
+		#if defined(_CGAME)
+			bgSiegeClasses[bgNumSiegeClasses].classShader = trap->R_RegisterShaderNoMip(parseBuf);
+		#elif defined(_UI)
+			bgSiegeClasses[bgNumSiegeClasses].classShader = trap->R_RegisterShaderNoMip(parseBuf);
+		#endif
 		assert( bgSiegeClasses[bgNumSiegeClasses].classShader );
 		if ( !bgSiegeClasses[bgNumSiegeClasses].classShader )
 		{
 			//Com_Error( ERR_DROP, "ERROR: could not find class_shader %s for class %s\n", parseBuf, bgSiegeClasses[bgNumSiegeClasses].name );
 			Com_Printf( "ERROR: could not find class_shader %s for class %s\n", parseBuf, bgSiegeClasses[bgNumSiegeClasses].name );
 		}
-		// A very hacky way to determine class . . . 
+		// A very hacky way to determine class . . .
 		else
-#endif
+	#endif
 		{
 			// Find the base player class based on the icon name - very bad, I know.
-			int titleLength,i,arrayTitleLength;
+			int titleLength, arrayTitleLength;
 			char *holdBuf;
 
 			titleLength = strlen(parseBuf);
 			for (i=0;i<SPC_MAX;i++)
 			{
-				// Back up 
+				// Back up
 				arrayTitleLength = strlen(classTitles[i]);
 				if (arrayTitleLength>titleLength)	// Too long
 				{
@@ -1190,14 +1189,15 @@ void BG_SiegeLoadClasses(siegeClassDesc_t *descBuffer)
 
 	bgNumSiegeClasses = 0;
 
-	numFiles = trap_FS_GetFileList("ext_data/Siege/Classes", ".scl", filelist, 4096 );
+	numFiles = trap->FS_GetFileList("ext_data/Siege/Classes", ".scl", filelist, sizeof( filelist ) );
+
 	fileptr = filelist;
 
 	for (i = 0; i < numFiles; i++, fileptr += filelen+1)
 	{
 		filelen = strlen(fileptr);
-		strcpy(filename, "ext_data/Siege/Classes/");
-		strcat(filename, fileptr);
+		Q_strncpyz(filename, "ext_data/Siege/Classes/", sizeof(filename));
+		Q_strcat(filename, sizeof(filename), fileptr);
 
 		if (descBuffer)
 		{
@@ -1243,37 +1243,34 @@ void BG_SiegeParseTeamFile(const char *filename)
 	int i = 1;
 	qboolean success = qtrue;
 
-	len = trap_FS_FOpenFile(filename, &f, FS_READ);
+	len = trap->FS_Open(filename, &f, FS_READ);
 
 	if (!f || len >= 2048)
 	{
 		return;
 	}
 
-	trap_FS_Read(teamInfo, len, f);
-
-	trap_FS_FCloseFile(f);
+	trap->FS_Read( teamInfo, len, f );
+	trap->FS_Close( f );
 
 	teamInfo[len] = 0;
 
 	if (BG_SiegeGetPairedValue(teamInfo, "name", parseBuf))
 	{
-		strcpy(bgSiegeTeams[bgNumSiegeTeams].name, parseBuf);
+		Q_strncpyz(bgSiegeTeams[bgNumSiegeTeams].name, parseBuf, sizeof(bgSiegeTeams[0].name));
 	}
 	else
 	{
 		Com_Error(ERR_DROP, "Siege team with no name definition");
 	}
 
-//I don't entirely like doing things this way but it's the easiest way.
-#ifdef CGAME
-	if (BG_SiegeGetPairedValue(teamInfo, "FriendlyShader", parseBuf))
-	{
-		bgSiegeTeams[bgNumSiegeTeams].friendlyShader = trap_R_RegisterShaderNoMip(parseBuf);
-	}
-#else
-	bgSiegeTeams[bgNumSiegeTeams].friendlyShader = 0;
-#endif
+	//I don't entirely like doing things this way but it's the easiest way.
+	#ifdef _CGAME
+		if (BG_SiegeGetPairedValue(teamInfo, "FriendlyShader", parseBuf))
+			bgSiegeTeams[bgNumSiegeTeams].friendlyShader = trap->R_RegisterShaderNoMip(parseBuf);
+	#else
+		bgSiegeTeams[bgNumSiegeTeams].friendlyShader = 0;
+	#endif
 
 	bgSiegeTeams[bgNumSiegeTeams].numClasses = 0;
 
@@ -1281,7 +1278,7 @@ void BG_SiegeParseTeamFile(const char *filename)
 	{
 		while (success && i < MAX_SIEGE_CLASSES)
 		{ //keep checking for group values named class# up to MAX_SIEGE_CLASSES until we can't find one.
-			strcpy(lookString, va("class%i", i));
+			Q_strncpyz(lookString, va("class%i", i), sizeof(lookString));
 
 			success = BG_SiegeGetPairedValue(teamInfo, lookString, parseBuf);
 
@@ -1323,14 +1320,15 @@ void BG_SiegeLoadTeams(void)
 
 	bgNumSiegeTeams = 0;
 
-	numFiles = trap_FS_GetFileList("ext_data/Siege/Teams", ".team", filelist, 4096 );
+	numFiles = trap->FS_GetFileList("ext_data/Siege/Teams", ".team", filelist, sizeof( filelist ) );
+
 	fileptr = filelist;
 
 	for (i = 0; i < numFiles; i++, fileptr += filelen+1)
 	{
 		filelen = strlen(fileptr);
-		strcpy(filename, "ext_data/Siege/Teams/");
-		strcat(filename, fileptr);
+		Q_strncpyz(filename, "ext_data/Siege/Teams/", sizeof(filename));
+		Q_strcat(filename, sizeof(filename), fileptr);
 		BG_SiegeParseTeamFile(filename);
 	}
 }
@@ -1356,9 +1354,9 @@ siegeTeam_t *BG_SiegeFindThemeForTeam(int team)
     return NULL;
 }
 
-#ifndef UI_EXPORTS //only for game/cgame
+#if defined(_GAME) || defined(_CGAME) //only for game/cgame
 //precache all the sabers for the active classes for the team
-extern qboolean WP_SaberParseParms( const char *SaberName, saberInfo_t *saber ); //bg_saberLoad.cpp
+extern qboolean WP_SaberParseParms( const char *saberName, saberInfo_t *saber ); //bg_saberLoad.cpp
 extern int BG_ModelCache(const char *modelName, const char *skinName); //bg_misc.c
 
 void BG_PrecacheSabersForSiegeTeam(int team)
@@ -1459,7 +1457,7 @@ siegeTeam_t *BG_SiegeFindTeamForTheme(char *themeName)
 
 	while (i < bgNumSiegeTeams)
 	{
-		if (bgSiegeTeams[i].name &&
+		if (bgSiegeTeams[i].name[0] &&
 			!Q_stricmp(bgSiegeTeams[i].name, themeName))
 		{ //this is what we're looking for
 			return &bgSiegeTeams[i];
@@ -1505,4 +1503,3 @@ int BG_SiegeFindClassIndexByName(const char *classname)
 //======================================
 //End misc/utility functions
 //======================================
-

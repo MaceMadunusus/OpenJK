@@ -1,21 +1,6 @@
-// this include must remain at the top of every CPP file
-//Anything above this #include will be ignored by the compiler
-#include "qcommon/exe_headers.h"
-
 #include "client.h"
-
-#if !defined(FX_SCHEDULER_H_INC)
-	#include "FxScheduler.h"
-#endif
-
-#if !defined(G2_H_INC)
-	#include "ghoul2/G2.h"
-	#include "ghoul2/G2_local.h"
-#endif
-
-#ifdef VV_LIGHTING
-#include "renderer/tr_lightmanager.h"
-#endif
+#include "cl_cgameapi.h"
+#include "FxScheduler.h"
 
 extern int		drawnFx;
 
@@ -25,11 +10,11 @@ extern int		drawnFx;
 //
 //--------------------------
 CEffect::CEffect(void) :
+	mFlags(0),
 	mMatImpactFX(MATIMPACTFX_NONE),
 	mMatImpactParm(-1),
-	mSoundVolume(-1),
 	mSoundRadius(-1),
-	mFlags(0)
+	mSoundVolume(-1)
 {
 	memset( &mRefEnt, 0, sizeof( mRefEnt ));
 }
@@ -119,7 +104,7 @@ void CParticle::Draw(void)
 		color[2] = mRefEnt.shaderRGBA[2] / 255.0;
 		color[3] = mRefEnt.shaderRGBA[3] / 255.0;
 
-		// add this 2D effect to the proper list. it will get drawn after the cgi.RenderScene call
+		// add this 2D effect to the proper list. it will get drawn after the trap->RenderScene call
 		theFxScheduler.Add2DEffect(mOrigin1[0], mOrigin1[1], mRefEnt.radius, mRefEnt.radius, color, mRefEnt.customShader);
 	}
 	else
@@ -129,7 +114,7 @@ void CParticle::Draw(void)
 
 		theFxHelper.AddFxToScene(&mRefEnt);
 	}
-	drawnFx++;	
+	drawnFx++;
 }
 
 //----------------------------
@@ -145,16 +130,16 @@ bool CParticle::Update(void)
 
 	if ( mFlags & FX_RELATIVE )
 	{
-		if ( !mGhoul2.IsValid())
+		if ( !re->G2API_IsGhoul2InfovValid (*mGhoul2))
 		{	// the thing we are bolted to is no longer valid, so we may as well just die.
 			return false;
 		}
 
 		vec3_t	org;
-		vec3_t	ax[3];
+		matrix3_t	ax;
 
 		// Get our current position and direction
-		if (!theFxHelper.GetOriginAxisFromBolt(&mGhoul2, mEntNum, mModelNum, mBoltNum, org, ax))
+		if (!theFxHelper.GetOriginAxisFromBolt(mGhoul2, mEntNum, mModelNum, mBoltNum, org, ax))
 		{	//could not get bolt
 			return false;
 		}
@@ -180,7 +165,7 @@ bool CParticle::Update(void)
 
 		// Now move us to where we should be at the given time
 		VectorMA( org, time, realVel, mOrigin1 );
-		
+
 	}
 	else if (( mTimeStart < theFxHelper.mTime ) && UpdateOrigin() == false )
 	{
@@ -190,8 +175,8 @@ bool CParticle::Update(void)
 
 
 	if ( !Cull() )
-	{	
-		// Only update these if the thing is visible.	
+	{
+		// Only update these if the thing is visible.
 		UpdateSize();
 		UpdateRGB();
 		UpdateAlpha();
@@ -220,116 +205,88 @@ bool CParticle::UpdateOrigin(void)
 	// Only perform physics if this object is tagged to do so
 	if ( (mFlags & FX_APPLY_PHYSICS) && !(mFlags & FX_PLAYER_VIEW) )
 	{
-		bool solid;
+		trace_t	trace;
+		float	dot;
 
-		if ( mFlags & FX_EXPENSIVE_PHYSICS )
+		if ( mFlags & FX_USE_BBOX )
 		{
-			solid = true; // by setting this to true, we force a real trace to happen
+			if (mFlags & FX_GHOUL2_TRACE)
+			{
+				theFxHelper.G2Trace( trace, mOrigin1, mMin, mMax, new_origin, -1, MASK_SOLID );
+			}
+			else
+			{
+				theFxHelper.Trace( trace, mOrigin1, mMin, mMax, new_origin, -1, MASK_SOLID );
+			}
 		}
 		else
 		{
-			// if this returns solid, we need to do a trace
-			if (!com_RMG || com_RMG->integer)
-			{	// don't do this call for RMG maps
-				TCGPointContents	*data = (TCGPointContents *)cl.mSharedMemory;
-
-				VectorCopy(new_origin, data->mPoint);
-				data->mPassEntityNum = ENTITYNUM_WORLD;
-
-				// if this returns solid, we need to do a trace
-				solid = !!(VM_Call( cgvm, CG_POINT_CONTENTS ) & MASK_SOLID); 
+			if (mFlags & FX_GHOUL2_TRACE)
+			{
+				theFxHelper.G2Trace( trace, mOrigin1, NULL, NULL, new_origin, -1, MASK_PLAYERSOLID );
 			}
 			else
 			{
-				solid = false;
+				theFxHelper.Trace( trace, mOrigin1, NULL, NULL, new_origin, -1, MASK_SOLID );
 			}
 		}
 
-		if ( solid )
+		// Hit something
+		if (trace.startsolid || trace.allsolid)
 		{
-			trace_t	trace;
-			float	dot;
+			VectorClear( mVel );
+			VectorClear( mAccel );
 
-			if ( mFlags & FX_USE_BBOX )
+			if ((mFlags & FX_GHOUL2_TRACE) && (mFlags & FX_IMPACT_RUNS_FX))
 			{
-				if (mFlags & FX_GHOUL2_TRACE)
-				{
-					theFxHelper.G2Trace( trace, mOrigin1, mMin, mMax, new_origin, -1, MASK_SOLID );
-				}
-				else
-				{
-					theFxHelper.Trace( trace, mOrigin1, mMin, mMax, new_origin, -1, MASK_SOLID );
-				}
-			}
-			else
-			{
-				if (mFlags & FX_GHOUL2_TRACE)
-				{
-					theFxHelper.G2Trace( trace, mOrigin1, NULL, NULL, new_origin, -1, MASK_PLAYERSOLID );
-				}
-				else
-				{
-					theFxHelper.Trace( trace, mOrigin1, NULL, NULL, new_origin, -1, MASK_SOLID );
-				}
+				static vec3_t bsNormal = {0, 1, 0};
+
+				theFxScheduler.PlayEffect( mImpactFxID, trace.endpos, bsNormal );
 			}
 
-			// Hit something
-			if (trace.startsolid || trace.allsolid)
+			mFlags &= ~(FX_APPLY_PHYSICS | FX_IMPACT_RUNS_FX);
+
+			return true;
+		}
+		else if ( trace.fraction < 1.0f )//&& !trace.startsolid && !trace.allsolid )
+		{
+			if ( mFlags & FX_IMPACT_RUNS_FX && !(trace.surfaceFlags & SURF_NOIMPACT ))
+			{
+				theFxScheduler.PlayEffect( mImpactFxID, trace.endpos, trace.plane.normal );
+			}
+
+			// may need to interact with the material type we hit
+			theFxScheduler.MaterialImpact(&trace, (CEffect*)this);
+
+			if ( mFlags & FX_KILL_ON_IMPACT	)
+			{
+				// time to die
+				return false;
+			}
+
+			VectorMA( mVel, theFxHelper.mRealTime * trace.fraction, mAccel, mVel );
+
+			dot = DotProduct( mVel, trace.plane.normal );
+
+			VectorMA( mVel, -2.0f * dot, trace.plane.normal, mVel );
+
+			VectorScale( mVel, mElasticity, mVel );
+			mElasticity *= 0.5f;
+
+			// If the velocity is too low, make it stop moving, rotating, and turn off physics to avoid
+			//	doing expensive operations when they aren't needed
+			//if ( trace.plane.normal[2] > 0.33f && mVel[2] < 10.0f )
+			if (VectorLengthSquared(mVel) < 100.0f)
 			{
 				VectorClear( mVel );
 				VectorClear( mAccel );
 
-				if ((mFlags & FX_GHOUL2_TRACE) && (mFlags & FX_IMPACT_RUNS_FX))
-				{
-					static vec3_t bsNormal = {0, 1, 0};
-
-					theFxScheduler.PlayEffect( mImpactFxID, trace.endpos, bsNormal );
-				}
-
 				mFlags &= ~(FX_APPLY_PHYSICS | FX_IMPACT_RUNS_FX);
-
-				return true;
 			}
-			else if ( trace.fraction < 1.0f )//&& !trace.startsolid && !trace.allsolid )
-			{
-				if ( mFlags & FX_IMPACT_RUNS_FX && !(trace.surfaceFlags & SURF_NOIMPACT ))
-				{
-					theFxScheduler.PlayEffect( mImpactFxID, trace.endpos, trace.plane.normal );
-				}
 
-				// may need to interact with the material type we hit
-				theFxScheduler.MaterialImpact(&trace, (CEffect*)this);
-
-				if ( mFlags & FX_KILL_ON_IMPACT	)
-				{
-					// time to die
-					return false;
-				}
-
-				VectorMA( mVel, theFxHelper.mRealTime * trace.fraction, mAccel, mVel );
-
-				dot = DotProduct( mVel, trace.plane.normal );
-
-				VectorMA( mVel, -2.0f * dot, trace.plane.normal, mVel );
-
-				VectorScale( mVel, mElasticity, mVel );
-				mElasticity *= 0.5f;
-
-				// If the velocity is too low, make it stop moving, rotating, and turn off physics to avoid
-				//	doing expensive operations when they aren't needed
-				//if ( trace.plane.normal[2] > 0.33f && mVel[2] < 10.0f )
-				if (VectorLengthSquared(mVel) < 100.0f)
-				{
-					VectorClear( mVel );
-					VectorClear( mAccel );
-
-					mFlags &= ~(FX_APPLY_PHYSICS | FX_IMPACT_RUNS_FX);
-				}
-
-				// Set the origin to the exact impact point
-				VectorMA( trace.endpos, 1.0f, trace.plane.normal, mOrigin1 );
-				return true;
-			}
+			// Set the origin to the exact impact point
+			VectorMA( trace.endpos, 1.0f, trace.plane.normal, mOrigin1 );
+			return true;
 		}
 	}
 
@@ -353,10 +310,10 @@ bool CParticle::UpdateOrigin(void)
 void CParticle::UpdateSize(void)
 {
 	// completely biased towards start if it doesn't get overridden
-	float	perc1 = 1.0f, perc2 = 1.0f; 
+	float	perc1 = 1.0f, perc2 = 1.0f;
 
 	if ( (mFlags & FX_SIZE_LINEAR) )
-	{ 
+	{
 		// calculate element biasing
 		perc1 = 1.0f - (float)(theFxHelper.mTime - mTimeStart) / (float)(mTimeEnd - mTimeStart);
 	}
@@ -365,7 +322,7 @@ void CParticle::UpdateSize(void)
 	if (( mFlags & FX_SIZE_PARM_MASK ) == FX_SIZE_NONLINEAR )
 	{
 		if ( theFxHelper.mTime > mSizeParm )
-		{ 
+		{
 			// get percent done, using parm as the start of the non-linear fade
 			perc2 = 1.0f - (float)(theFxHelper.mTime - mSizeParm) / (float)(mTimeEnd - mSizeParm);
 		}
@@ -376,20 +333,20 @@ void CParticle::UpdateSize(void)
 			perc1 = perc1 * 0.5f + perc2 * 0.5f;
 		}
 		else
-		{ 
+		{
 			// just copy it over...sigh
 			perc1 = perc2;
 		}
 	}
 	else if (( mFlags & FX_SIZE_PARM_MASK ) == FX_SIZE_WAVE )
-	{ 
+	{
 		// wave gen, with parm being the frequency multiplier
 		perc1 = perc1 * cosf( (theFxHelper.mTime - mTimeStart) * mSizeParm );
 	}
 	else if (( mFlags & FX_SIZE_PARM_MASK ) == FX_SIZE_CLAMP )
 	{
 		if ( theFxHelper.mTime < mSizeParm )
-		{ 
+		{
 			// get percent done, using parm as the start of the non-linear fade
 			perc2 = (float)(mSizeParm - theFxHelper.mTime) / (float)(mSizeParm - mTimeStart);
 		}
@@ -399,12 +356,12 @@ void CParticle::UpdateSize(void)
 		}
 
 		if ( (mFlags & FX_SIZE_LINEAR) )
-		{ 
+		{
 			// do an even blend
 			perc1 = perc1 * 0.5f + perc2 * 0.5f;
 		}
 		else
-		{ 
+		{
 			// just copy it over...sigh
 			perc1 = perc2;
 		}
@@ -412,7 +369,7 @@ void CParticle::UpdateSize(void)
 
 	// If needed, RAND can coexist with linear and either non-linear or wave.
 	if ( mFlags & FX_SIZE_RAND )
-	{ 
+	{
 		// Random simply modulates the existing value
 		perc1 = flrand(0.0f, perc1);
 	}
@@ -420,34 +377,20 @@ void CParticle::UpdateSize(void)
 	mRefEnt.radius = (mSizeStart * perc1) + (mSizeEnd * (1.0f - perc1));
 }
 
-inline int VectorToInt(vec3_t vec)
+void ClampRGB( const vec3_t in, byte *out )
 {
-	int			tmp, retval;
+	int r;
 
-	_asm
-	{
-		push	edx
-		mov		edx, [vec]
-		fld		dword ptr[edx + 0]
-		fld		dword ptr[edx + 4]
-		fld		dword ptr[edx + 8]
+	for ( int i=0; i<3; i++ ) {
+		r = Q_ftol(in[i] * 255.0f);
 
-		mov		eax, 0xff00
+		if ( r < 0 )
+			r = 0;
+		else if ( r > 255 )
+			r = 255;
 
-		fistp	tmp	   
-		mov		al, byte ptr [tmp]
-		shl		eax, 16
-		
-		fistp	tmp
-		mov		ah, byte ptr [tmp]
-
-		fistp	tmp
-		mov		al, byte ptr [tmp]
-
-		mov		[retval], eax
-		pop		edx
+		out[i] = (byte)r;
 	}
-	return(retval);
 }
 
 //----------------------------
@@ -456,11 +399,11 @@ inline int VectorToInt(vec3_t vec)
 void CParticle::UpdateRGB(void)
 {
 	// completely biased towards start if it doesn't get overridden
-	float	perc1 = 1.0f, perc2 = 1.0f; 
+	float	perc1 = 1.0f, perc2 = 1.0f;
 	vec3_t	res;
 
 	if ( (mFlags & FX_RGB_LINEAR) )
-	{ 
+	{
 		// calculate element biasing
 		perc1 = 1.0f - (float)( theFxHelper.mTime - mTimeStart ) / (float)( mTimeEnd - mTimeStart );
 	}
@@ -469,31 +412,31 @@ void CParticle::UpdateRGB(void)
 	if (( mFlags & FX_RGB_PARM_MASK ) == FX_RGB_NONLINEAR )
 	{
 		if ( theFxHelper.mTime > mRGBParm )
-		{ 
+		{
 			// get percent done, using parm as the start of the non-linear fade
 			perc2 = 1.0f - (float)( theFxHelper.mTime - mRGBParm ) / (float)( mTimeEnd - mRGBParm );
 		}
 
 		if ( (mFlags & FX_RGB_LINEAR) )
-		{ 
+		{
 			// do an even blend
 			perc1 = perc1 * 0.5f + perc2 * 0.5f;
 		}
 		else
-		{ 
+		{
 			// just copy it over...sigh
 			perc1 = perc2;
 		}
 	}
 	else if (( mFlags & FX_RGB_PARM_MASK ) == FX_RGB_WAVE )
-	{ 
+	{
 		// wave gen, with parm being the frequency multiplier
 		perc1 = perc1 * cosf(( theFxHelper.mTime - mTimeStart ) * mRGBParm );
 	}
 	else if (( mFlags & FX_RGB_PARM_MASK ) == FX_RGB_CLAMP )
 	{
 		if ( theFxHelper.mTime < mRGBParm )
-		{ 
+		{
 			// get percent done, using parm as the start of the non-linear fade
 			perc2 = (float)(mRGBParm - theFxHelper.mTime) / (float)(mRGBParm - mTimeStart);
 		}
@@ -503,12 +446,12 @@ void CParticle::UpdateRGB(void)
 		}
 
 		if (( mFlags & FX_RGB_LINEAR ))
-		{ 
+		{
 			// do an even blend
 			perc1 = perc1 * 0.5f + perc2 * 0.5f;
 		}
 		else
-		{ 
+		{
 			// just copy it over...sigh
 			perc1 = perc2;
 		}
@@ -516,20 +459,16 @@ void CParticle::UpdateRGB(void)
 
 	// If needed, RAND can coexist with linear and either non-linear or wave.
 	if ( mFlags & FX_RGB_RAND )
-	{ 
+	{
 		// Random simply modulates the existing value
 		perc1 = flrand(0.0f, perc1);
 	}
 
-	// Now get the correct color 
+	// Now get the correct color
 	VectorScale( mRGBStart, perc1, res );
 	VectorMA( res, 1.0f - perc1, mRGBEnd, res );
 
-	res[0] = Com_Clamp(0.0f, 1.0f, res[0]) * 255.0f;
-	res[1] = Com_Clamp(0.0f, 1.0f, res[1]) * 255.0f;
-	res[2] = Com_Clamp(0.0f, 1.0f, res[2]) * 255.0f;
-
-	*(int *)mRefEnt.shaderRGBA = VectorToInt(res);
+	ClampRGB( res, (byte*)(&mRefEnt.shaderRGBA) );
 }
 
 //----------------------------
@@ -543,7 +482,7 @@ void CParticle::UpdateAlpha(void)
 	float	perc1 = 1.0f, perc2 = 1.0f;
 
 	if ( (mFlags & FX_ALPHA_LINEAR) )
-	{ 
+	{
 		// calculate element biasing
 		perc1 = 1.0f - (float)(theFxHelper.mTime - mTimeStart) / (float)(mTimeEnd - mTimeStart);
 	}
@@ -552,31 +491,31 @@ void CParticle::UpdateAlpha(void)
 	if (( mFlags & FX_ALPHA_PARM_MASK ) == FX_ALPHA_NONLINEAR )
 	{
 		if ( theFxHelper.mTime > mAlphaParm )
-		{ 
+		{
 			// get percent done, using parm as the start of the non-linear fade
 			perc2 = 1.0f - (float)(theFxHelper.mTime - mAlphaParm) / (float)(mTimeEnd - mAlphaParm);
 		}
 
 		if (( mFlags & FX_ALPHA_LINEAR ))
-		{ 
+		{
 			// do an even blend
 			perc1 = perc1 * 0.5f + perc2 * 0.5f;
 		}
 		else
-		{ 
+		{
 			// just copy it over...sigh
 			perc1 = perc2;
 		}
 	}
 	else if (( mFlags & FX_ALPHA_PARM_MASK ) == FX_ALPHA_WAVE )
-	{ 
+	{
 		// wave gen, with parm being the frequency multiplier
 		perc1 = perc1 * cosf( (theFxHelper.mTime - mTimeStart) * mAlphaParm );
 	}
 	else if (( mFlags & FX_ALPHA_PARM_MASK ) == FX_ALPHA_CLAMP )
 	{
 		if ( theFxHelper.mTime < mAlphaParm )
-		{ 
+		{
 			// get percent done, using parm as the start of the non-linear fade
 			perc2 = (float)(mAlphaParm - theFxHelper.mTime) / (float)(mAlphaParm - mTimeStart);
 		}
@@ -586,12 +525,12 @@ void CParticle::UpdateAlpha(void)
 		}
 
 		if (( mFlags & FX_ALPHA_LINEAR ))
-		{ 
+		{
 			// do an even blend
 			perc1 = perc1 * 0.5f + perc2 * 0.5f;
 		}
 		else
-		{ 
+		{
 			// just copy it over...sigh
 			perc1 = perc2;
 		}
@@ -604,7 +543,7 @@ void CParticle::UpdateAlpha(void)
 
 	// If needed, RAND can coexist with linear and either non-linear or wave.
 	if ( mFlags & FX_ALPHA_RAND )
-	{ 
+	{
 		// Random simply modulates the existing value
 		perc1 = flrand(0.0f, perc1);
 	}
@@ -691,7 +630,7 @@ void COrientedParticle::Draw(void)
 	}
 
 	theFxHelper.AddFxToScene( &mRefEnt );
-	drawnFx++;	
+	drawnFx++;
 }
 
 //----------------------------
@@ -704,18 +643,18 @@ bool COrientedParticle::Update(void)
 	{
 		return false;
 	}
-		
+
 	if ( mFlags & FX_RELATIVE )
 	{
-		if ( !mGhoul2.IsValid())
+		if ( !re->G2API_IsGhoul2InfovValid (*mGhoul2))
 		{	// the thing we are bolted to is no longer valid, so we may as well just die.
 			return false;
 		}
 		vec3_t	org;
-		vec3_t	ax[3];
+		matrix3_t	ax;
 
 		// Get our current position and direction
-		if (!theFxHelper.GetOriginAxisFromBolt(&mGhoul2, mEntNum, mModelNum, mBoltNum, org, ax))
+		if (!theFxHelper.GetOriginAxisFromBolt(mGhoul2, mEntNum, mModelNum, mBoltNum, org, ax))
 		{	//could not get bolt
 			return false;
 		}
@@ -751,7 +690,7 @@ bool COrientedParticle::Update(void)
 		//vec3_t	offsetAngles;
 		//VectorSet( offsetAngles, 0, 90, 90 );
 
-		vec3_t	offsetAxis[3];
+		matrix3_t	offsetAxis;
 		//NOTE: mNormal is actually PITCH YAW and ROLL offsets
 		AnglesToAxis( mNormal, offsetAxis );
 		MatrixMultiply( offsetAxis, ax, mRefEnt.axis );
@@ -763,7 +702,7 @@ bool COrientedParticle::Update(void)
 	}
 
 	if ( !Cull() )
-	{	// Only update these if the thing is visible.	
+	{	// Only update these if the thing is visible.
 		UpdateSize();
 		UpdateRGB();
 		UpdateAlpha();
@@ -799,7 +738,7 @@ void CLine::Draw(void)
 	VectorCopy( mOrigin2, mRefEnt.oldorigin );
 
 	theFxHelper.AddFxToScene(&mRefEnt);
-	drawnFx++;	
+	drawnFx++;
 }
 
 //----------------------------
@@ -813,28 +752,28 @@ bool CLine::Update(void)
 
 	if ( mFlags & FX_RELATIVE )
 	{
-		if ( !mGhoul2.IsValid())
+		if ( !re->G2API_IsGhoul2InfovValid (*mGhoul2))
 		{	// the thing we are bolted to is no longer valid, so we may as well just die.
 			return false;
 		}
 
-		vec3_t	ax[3];
+		matrix3_t	ax;
 		// Get our current position and direction
-		if (!theFxHelper.GetOriginAxisFromBolt(&mGhoul2, mEntNum, mModelNum, mBoltNum, mOrigin1, ax))
+		if (!theFxHelper.GetOriginAxisFromBolt(mGhoul2, mEntNum, mModelNum, mBoltNum, mOrigin1, ax))
 		{	//could not get bolt
 			return false;
 		}
 
 		VectorAdd(mOrigin1, mOrgOffset, mOrigin1);	//add the offset to the bolt point
-		
+
 		VectorMA( mOrigin1, mVel[0], ax[0], mOrigin2 );
 		VectorMA( mOrigin2, mVel[1], ax[1], mOrigin2 );
 		VectorMA( mOrigin2, mVel[2], ax[2], mOrigin2 );
 	}
 
 	if ( !Cull())
-	{	
-		// Only update these if the thing is visible.	
+	{
+		// Only update these if the thing is visible.
 		UpdateSize();
 		UpdateRGB();
 		UpdateAlpha();
@@ -868,7 +807,7 @@ void CElectricity::Initialize(void)
 
 	if ( mFlags & FX_BRANCH )
 	{
-		mRefEnt.renderfx |= RF_FORKED;	
+		mRefEnt.renderfx |= RF_FORKED;
 	}
 
 	if ( mFlags & FX_TAPER )
@@ -891,7 +830,7 @@ void CElectricity::Draw(void)
 	mRefEnt.axis[0][1] = mTimeEnd - mTimeStart;
 
 	theFxHelper.AddFxToScene( &mRefEnt );
-	drawnFx++;	
+	drawnFx++;
 }
 
 //----------------------------
@@ -905,32 +844,32 @@ bool CElectricity::Update(void)
 
 	if ( mFlags & FX_RELATIVE )
 	{
-		if ( !mGhoul2.IsValid())
+		if ( !re->G2API_IsGhoul2InfovValid (*mGhoul2))
 		{	// the thing we are bolted to is no longer valid, so we may as well just die.
 			return false;
 		}
 
-		vec3_t	ax[3];
+		matrix3_t	ax;
 		// Get our current position and direction
-		if (!theFxHelper.GetOriginAxisFromBolt(&mGhoul2, mEntNum, mModelNum, mBoltNum, mOrigin1, ax))
+		if (!theFxHelper.GetOriginAxisFromBolt(mGhoul2, mEntNum, mModelNum, mBoltNum, mOrigin1, ax))
 		{	//could not get bolt
 			return false;
 		}
 
 		VectorAdd(mOrigin1, mOrgOffset, mOrigin1);	//add the offset to the bolt point
-		
+
 		VectorMA( mOrigin1, mVel[0], ax[0], mOrigin2 );
 		VectorMA( mOrigin2, mVel[1], ax[1], mOrigin2 );
 		VectorMA( mOrigin2, mVel[2], ax[2], mOrigin2 );
 	}
 
 	if ( !Cull())
-	{	
-		// Only update these if the thing is visible.	
+	{
+		// Only update these if the thing is visible.
 		UpdateSize();
 		UpdateRGB();
 		UpdateAlpha();
-		
+
 		Draw();
 	}
 
@@ -959,7 +898,7 @@ void CTail::Draw(void)
 	VectorCopy( mOrigin1, mRefEnt.origin );
 
 	theFxHelper.AddFxToScene(&mRefEnt);
-	drawnFx++;	
+	drawnFx++;
 }
 
 //----------------------------
@@ -970,18 +909,18 @@ bool CTail::Update(void)
 	{
 		return false;
 	}
-		
+
 	if ( mFlags & FX_RELATIVE )
 	{
-		if ( !mGhoul2.IsValid())
+		if ( !re->G2API_IsGhoul2InfovValid (*mGhoul2))
 		{	// the thing we are bolted to is no longer valid, so we may as well just die.
 			return false;
 		}
 		vec3_t	org;
-		vec3_t	ax[3];
+		matrix3_t	ax;
 		if (mModelNum>=0 && mBoltNum>=0)	//bolt style
 		{
-			if (!theFxHelper.GetOriginAxisFromBolt(&mGhoul2, mEntNum, mModelNum, mBoltNum, org, ax))
+			if (!theFxHelper.GetOriginAxisFromBolt(mGhoul2, mEntNum, mModelNum, mBoltNum, org, ax))
 			{	//could not get bolt
 				return false;
 			}
@@ -1014,7 +953,7 @@ bool CTail::Update(void)
 		// Just calc an old point some time in the past, doesn't really matter when
 		VectorMA( org, (time - 0.003f), realVel, mOldOrigin );
 	}
-#ifdef _SOF2DEV_
+#ifdef _DEBUG
 	else if ( !fx_freeze->integer )
 #else
 	else
@@ -1030,8 +969,8 @@ bool CTail::Update(void)
 	}
 
 	if ( !Cull() )
-	{	
-		// Only update these if the thing is visible.	
+	{
+		// Only update these if the thing is visible.
 		UpdateSize();
 		UpdateLength();
 		UpdateRGB();
@@ -1048,10 +987,10 @@ bool CTail::Update(void)
 void CTail::UpdateLength(void)
 {
 	// completely biased towards start if it doesn't get overridden
-	float	perc1 = 1.0f, perc2 = 1.0f; 
+	float	perc1 = 1.0f, perc2 = 1.0f;
 
 	if ( mFlags & FX_LENGTH_LINEAR )
-	{ 
+	{
 		// calculate element biasing
 		perc1 = 1.0f - (float)(theFxHelper.mTime - mTimeStart) / (float)(mTimeEnd - mTimeStart);
 	}
@@ -1060,31 +999,31 @@ void CTail::UpdateLength(void)
 	if (( mFlags & FX_LENGTH_PARM_MASK ) == FX_LENGTH_NONLINEAR )
 	{
 		if ( theFxHelper.mTime > mLengthParm )
-		{ 
+		{
 			// get percent done, using parm as the start of the non-linear fade
 			perc2 = 1.0f - (float)(theFxHelper.mTime - mLengthParm) / (float)(mTimeEnd - mLengthParm);
 		}
 
 		if ( mFlags & FX_LENGTH_LINEAR )
-		{ 
+		{
 			// do an even blend
 			perc1 = perc1 * 0.5f + perc2 * 0.5f;
 		}
 		else
-		{ 
+		{
 			// just copy it over...sigh
 			perc1 = perc2;
 		}
 	}
 	else if (( mFlags & FX_LENGTH_PARM_MASK ) == FX_LENGTH_WAVE )
-	{ 
+	{
 		// wave gen, with parm being the frequency multiplier
 		perc1 = perc1 * cosf( (theFxHelper.mTime - mTimeStart) * mLengthParm );
 	}
 	else if (( mFlags & FX_LENGTH_PARM_MASK ) == FX_LENGTH_CLAMP )
 	{
 		if ( theFxHelper.mTime < mLengthParm )
-		{ 
+		{
 			// get percent done, using parm as the start of the non-linear fade
 			perc2 = (float)(mLengthParm - theFxHelper.mTime) / (float)(mLengthParm - mTimeStart);
 		}
@@ -1094,12 +1033,12 @@ void CTail::UpdateLength(void)
 		}
 
 		if ( mFlags & FX_LENGTH_LINEAR )
-		{ 
+		{
 			// do an even blend
 			perc1 = perc1 * 0.5f + perc2 * 0.5f;
 		}
 		else
-		{ 
+		{
 			// just copy it over...sigh
 			perc1 = perc2;
 		}
@@ -1107,7 +1046,7 @@ void CTail::UpdateLength(void)
 
 	// If needed, RAND can coexist with linear and either non-linear or wave.
 	if ( mFlags & FX_LENGTH_RAND )
-	{ 
+	{
 		// Random simply modulates the existing value
 		perc1 = flrand(0.0f, perc1);
 	}
@@ -1183,7 +1122,7 @@ void CCylinder::Draw(void)
 	VectorMA( mOrigin1, mLength, mRefEnt.axis[0], mRefEnt.oldorigin );
 
 	theFxHelper.AddFxToScene(&mRefEnt);
-	drawnFx++;	
+	drawnFx++;
 }
 
 //----------------------------
@@ -1192,10 +1131,10 @@ void CCylinder::Draw(void)
 void CCylinder::UpdateSize2(void)
 {
 	// completely biased towards start if it doesn't get overridden
-	float	perc1 = 1.0f, perc2 = 1.0f; 
+	float	perc1 = 1.0f, perc2 = 1.0f;
 
 	if ( mFlags & FX_SIZE2_LINEAR )
-	{ 
+	{
 		// calculate element biasing
 		perc1 = 1.0f - (float)(theFxHelper.mTime - mTimeStart) / (float)(mTimeEnd - mTimeStart);
 	}
@@ -1204,31 +1143,31 @@ void CCylinder::UpdateSize2(void)
 	if (( mFlags & FX_SIZE2_PARM_MASK ) == FX_SIZE2_NONLINEAR )
 	{
 		if ( theFxHelper.mTime > mSize2Parm )
-		{ 
+		{
 			// get percent done, using parm as the start of the non-linear fade
 			perc2 = 1.0f - (float)(theFxHelper.mTime - mSize2Parm) / (float)(mTimeEnd - mSize2Parm);
 		}
 
 		if ( (mFlags & FX_SIZE2_LINEAR) )
-		{ 
+		{
 			// do an even blend
 			perc1 = perc1 * 0.5f + perc2 * 0.5f;
 		}
 		else
-		{ 
+		{
 			// just copy it over...sigh
 			perc1 = perc2;
 		}
 	}
 	else if (( mFlags & FX_SIZE2_PARM_MASK ) == FX_SIZE2_WAVE )
-	{ 
+	{
 		// wave gen, with parm being the frequency multiplier
 		perc1 = perc1 * cosf( (theFxHelper.mTime - mTimeStart) * mSize2Parm );
 	}
 	else if (( mFlags & FX_SIZE2_PARM_MASK ) == FX_SIZE2_CLAMP )
 	{
 		if ( theFxHelper.mTime < mSize2Parm )
-		{ 
+		{
 			// get percent done, using parm as the start of the non-linear fade
 			perc2 = (float)(mSize2Parm - theFxHelper.mTime) / (float)(mSize2Parm - mTimeStart);
 		}
@@ -1238,12 +1177,12 @@ void CCylinder::UpdateSize2(void)
 		}
 
 		if ( mFlags & FX_SIZE2_LINEAR )
-		{ 
+		{
 			// do an even blend
 			perc1 = perc1 * 0.5f + perc2 * 0.5f;
 		}
 		else
-		{ 
+		{
 			// just copy it over...sigh
 			perc1 = perc2;
 		}
@@ -1251,7 +1190,7 @@ void CCylinder::UpdateSize2(void)
 
 	// If needed, RAND can coexist with linear and either non-linear or wave.
 	if ( mFlags & FX_SIZE2_RAND )
-	{ 
+	{
 		// Random simply modulates the existing value
 		perc1 = flrand(0.0f, perc1);
 	}
@@ -1270,20 +1209,20 @@ bool CCylinder::Update(void)
 
 	if ( mFlags & FX_RELATIVE )
 	{
-		if ( !mGhoul2.IsValid())
+		if ( !re->G2API_IsGhoul2InfovValid (*mGhoul2))
 		{	// the thing we are bolted to is no longer valid, so we may as well just die.
 			return false;
 		}
 
-		vec3_t	ax[3];
+		matrix3_t	ax;
 		// Get our current position and direction
-		if (!theFxHelper.GetOriginAxisFromBolt(&mGhoul2, mEntNum, mModelNum, mBoltNum, mOrigin1, ax))
+		if (!theFxHelper.GetOriginAxisFromBolt(mGhoul2, mEntNum, mModelNum, mBoltNum, mOrigin1, ax))
 		{	//could not get bolt
 			return false;
 		}
 
 		VectorAdd(mOrigin1, mOrgOffset, mOrigin1);	//add the offset to the bolt point
-		
+
 		VectorCopy( ax[0], mRefEnt.axis[0] );
 		//FIXME: should mNormal be a modifier on the forward axis?
 		/*
@@ -1292,16 +1231,16 @@ bool CCylinder::Update(void)
 		VectorMA( mOrigin2, mNormal[2], ax[2], mOrigin2 );
 		*/
 	}
-		
+
 	if ( !Cull() )
-	{	
-		// Only update these if the thing is visible.	
+	{
+		// Only update these if the thing is visible.
 		UpdateSize();
 		UpdateSize2();
 		UpdateLength();
 		UpdateRGB();
 		UpdateAlpha();
-		
+
 		Draw();
 	}
 
@@ -1316,7 +1255,7 @@ bool CCylinder::Update(void)
 //----------------------------
 CEmitter::CEmitter(void)
 {
-	// There may or may not be a model, but if there isn't one, 
+	// There may or may not be a model, but if there isn't one,
 	//	we just won't bother adding the refEnt in our Draw func
 	mRefEnt.reType = RT_MODEL;
 }
@@ -1362,7 +1301,7 @@ void CEmitter::Draw(void)
 
 		dif = 0;
 
-		for ( t = mOldTime; t <= theFxHelper.mTime; t += TRAIL_RATE ) 
+		for ( t = mOldTime; t <= theFxHelper.mTime; t += TRAIL_RATE )
 		{
 			dif += TRAIL_RATE;
 
@@ -1377,10 +1316,10 @@ void CEmitter::Draw(void)
 			org[0] = mOldOrigin[0] + (ftime * v[0]) + (time2 * v[0]);
 			org[1] = mOldOrigin[1] + (ftime * v[1]) + (time2 * v[1]);
 			org[2] = mOldOrigin[2] + (ftime * v[2]) + (time2 * v[2]);
-	
+
 			// Is it time to draw an effect?
 			if ( DistanceSquared( org, mOldOrigin ) >= step )
-			{ 
+			{
 				// Pick a new target step distance and square it
 				step = mDensity + flrand(-mVariance, mVariance);
 				step *= step;
@@ -1395,7 +1334,7 @@ void CEmitter::Draw(void)
 			}
 		}
 	}
-	drawnFx++;	
+	drawnFx++;
 }
 
 //----------------------------
@@ -1406,19 +1345,19 @@ bool CEmitter::Update(void)
 	{
 		return false;
 	}
-		
+
 	// Use this to track if we've stopped moving
 	VectorCopy( mOrigin1, mOldOrigin );
 	VectorCopy( mVel, mOldVelocity );
 
 	if ( mFlags & FX_RELATIVE )
 	{
-		if ( !mGhoul2.IsValid())
+		if ( !re->G2API_IsGhoul2InfovValid (*mGhoul2))
 		{	// the thing we are bolted to is no longer valid, so we may as well just die.
 			return false;
 		}
 		assert(0);//need this?
-		
+
 	}
 	if (( mTimeStart < theFxHelper.mTime ) && UpdateOrigin() == false )
 	{
@@ -1441,7 +1380,7 @@ bool CEmitter::Update(void)
 
 	if ( mFlags & FX_PAPER_PHYSICS )
 	{
-		// do this in a more framerate independant manner
+		// do this in a more framerate independent manner
 		float sc = ( 20.0f / theFxHelper.mFrameTime);
 
 		// bah, evil clamping
@@ -1493,12 +1432,8 @@ void CEmitter::UpdateAngles(void)
 //----------------------------
 void CLight::Draw(void)
 {
-#ifdef VV_LIGHTING
-	VVLightMan.RE_AddLightToScene( mOrigin1, mRefEnt.radius, mRefEnt.origin[0], mRefEnt.origin[1], mRefEnt.origin[2] );
-#else
 	theFxHelper.AddLightToScene( mOrigin1, mRefEnt.radius, mRefEnt.origin[0], mRefEnt.origin[1], mRefEnt.origin[2] );
-#endif
-	drawnFx++;	
+	drawnFx++;
 }
 
 //----------------------------
@@ -1514,14 +1449,14 @@ bool CLight::Update(void)
 
 	if ( mFlags & FX_RELATIVE )
 	{
-		if ( !mGhoul2.IsValid())
+		if ( !re->G2API_IsGhoul2InfovValid (*mGhoul2))
 		{	// the thing we are bolted to is no longer valid, so we may as well just die.
 			return false;
 		}
 
-		vec3_t	ax[3];
+		matrix3_t	ax;
 		// Get our current position and direction
-		if (!theFxHelper.GetOriginAxisFromBolt(&mGhoul2, mEntNum, mModelNum, mBoltNum, mOrigin1, ax))
+		if (!theFxHelper.GetOriginAxisFromBolt(mGhoul2, mEntNum, mModelNum, mBoltNum, mOrigin1, ax))
 		{	//could not get bolt
 			return false;
 		}
@@ -1533,7 +1468,7 @@ bool CLight::Update(void)
 
 	UpdateSize();
 	UpdateRGB();
-	
+
 	Draw();
 
 	return true;
@@ -1545,10 +1480,10 @@ bool CLight::Update(void)
 void CLight::UpdateSize(void)
 {
 	// completely biased towards start if it doesn't get overridden
-	float	perc1 = 1.0f, perc2 = 1.0f; 
+	float	perc1 = 1.0f, perc2 = 1.0f;
 
 	if ( mFlags & FX_SIZE_LINEAR )
-	{ 
+	{
 		// calculate element biasing
 		perc1 = 1.0f - (float)(theFxHelper.mTime - mTimeStart) / (float)(mTimeEnd - mTimeStart);
 	}
@@ -1557,31 +1492,31 @@ void CLight::UpdateSize(void)
 	if (( mFlags & FX_SIZE_PARM_MASK ) == FX_SIZE_NONLINEAR )
 	{
 		if ( theFxHelper.mTime > mSizeParm )
-		{ 
+		{
 			// get percent done, using parm as the start of the non-linear fade
 			perc2 = 1.0f - (float)(theFxHelper.mTime - mSizeParm) / (float)(mTimeEnd - mSizeParm);
 		}
 
 		if ( (mFlags & FX_SIZE_LINEAR) )
-		{ 
+		{
 			// do an even blend
 			perc1 = perc1 * 0.5f + perc2 * 0.5f;
 		}
 		else
-		{ 
+		{
 			// just copy it over...sigh
 			perc1 = perc2;
 		}
 	}
 	else if (( mFlags & FX_SIZE_PARM_MASK ) == FX_SIZE_WAVE )
-	{ 
+	{
 		// wave gen, with parm being the frequency multiplier
 		perc1 = perc1 * cosf( (theFxHelper.mTime - mTimeStart) * mSizeParm );
 	}
 	else if (( mFlags & FX_SIZE_PARM_MASK ) == FX_SIZE_CLAMP )
 	{
 		if ( theFxHelper.mTime < mSizeParm )
-		{ 
+		{
 			// get percent done, using parm as the start of the non-linear fade
 			perc2 = (float)(mSizeParm - theFxHelper.mTime) / (float)(mSizeParm - mTimeStart);
 		}
@@ -1591,12 +1526,12 @@ void CLight::UpdateSize(void)
 		}
 
 		if ( mFlags & FX_SIZE_LINEAR )
-		{ 
+		{
 			// do an even blend
 			perc1 = perc1 * 0.5f + perc2 * 0.5f;
 		}
 		else
-		{ 
+		{
 			// just copy it over...sigh
 			perc1 = perc2;
 		}
@@ -1604,7 +1539,7 @@ void CLight::UpdateSize(void)
 
 	// If needed, RAND can coexist with linear and either non-linear or wave.
 	if ( mFlags & FX_SIZE_RAND )
-	{ 
+	{
 		// Random simply modulates the existing value
 		perc1 = flrand(0.0f, perc1);
 	}
@@ -1618,11 +1553,11 @@ void CLight::UpdateSize(void)
 void CLight::UpdateRGB(void)
 {
 	// completely biased towards start if it doesn't get overridden
-	float	perc1 = 1.0f, perc2 = 1.0f; 
+	float	perc1 = 1.0f, perc2 = 1.0f;
 	vec3_t	res;
 
 	if ( mFlags & FX_RGB_LINEAR )
-	{ 
+	{
 		// calculate element biasing
 		perc1 = 1.0f - (float)( theFxHelper.mTime - mTimeStart ) / (float)( mTimeEnd - mTimeStart );
 	}
@@ -1631,31 +1566,31 @@ void CLight::UpdateRGB(void)
 	if (( mFlags & FX_RGB_PARM_MASK ) == FX_RGB_NONLINEAR )
 	{
 		if ( theFxHelper.mTime > mRGBParm )
-		{ 
+		{
 			// get percent done, using parm as the start of the non-linear fade
 			perc2 = 1.0f - (float)( theFxHelper.mTime - mRGBParm ) / (float)( mTimeEnd - mRGBParm );
 		}
 
 		if ( mFlags & FX_RGB_LINEAR )
-		{ 
+		{
 			// do an even blend
 			perc1 = perc1 * 0.5f + perc2 * 0.5f;
 		}
 		else
-		{ 
+		{
 			// just copy it over...sigh
 			perc1 = perc2;
 		}
 	}
 	else if (( mFlags & FX_RGB_PARM_MASK ) == FX_RGB_WAVE )
-	{ 
+	{
 		// wave gen, with parm being the frequency multiplier
 		perc1 = perc1 * cosf(( theFxHelper.mTime - mTimeStart ) * mRGBParm );
 	}
 	else if (( mFlags & FX_RGB_PARM_MASK ) == FX_RGB_CLAMP )
 	{
 		if ( theFxHelper.mTime < mRGBParm )
-		{ 
+		{
 			// get percent done, using parm as the start of the non-linear fade
 			perc2 = (float)(mRGBParm - theFxHelper.mTime) / (float)(mRGBParm - mTimeStart);
 		}
@@ -1665,12 +1600,12 @@ void CLight::UpdateRGB(void)
 		}
 
 		if ( mFlags & FX_RGB_LINEAR )
-		{ 
+		{
 			// do an even blend
 			perc1 = perc1 * 0.5f + perc2 * 0.5f;
 		}
 		else
-		{ 
+		{
 			// just copy it over...sigh
 			perc1 = perc2;
 		}
@@ -1678,12 +1613,12 @@ void CLight::UpdateRGB(void)
 
 	// If needed, RAND can coexist with linear and either non-linear or wave.
 	if ( mFlags & FX_RGB_RAND )
-	{ 
+	{
 		// Random simply modulates the existing value
 		perc1 = flrand(0.0f, perc1);
 	}
 
-	// Now get the correct color 
+	// Now get the correct color
 	VectorScale( mRGBStart, perc1, res );
 	VectorMA(res, ( 1.0f - perc1 ), mRGBEnd, mRefEnt.origin);
 }
@@ -1783,7 +1718,7 @@ bool CTrail::Update()
 	{
 		return false;
 	}
-		
+
 	float perc = (float)(mTimeEnd - theFxHelper.mTime) / (float)(mTimeEnd - mTimeStart);
 
 	for ( int t = 0; t < 4; t++ )
@@ -1851,7 +1786,8 @@ void CPoly::Draw(void)
 		VectorAdd( mOrigin1, mOrg[i], verts[i].xyz );
 
 		// Assign the same color to each vert
-		*(int *)verts[i].modulate = *(int *)mRefEnt.shaderRGBA;
+		for ( int k=0; k<4; k++ )
+			verts[i].modulate[k] = mRefEnt.shaderRGBA[k];
 
 		// Copy the ST coords
 		Vector2Copy( mST[i], verts[i].st );
@@ -1859,7 +1795,7 @@ void CPoly::Draw(void)
 
 	// Add this poly
 	theFxHelper.AddPolyToScene( mRefEnt.customShader, mCount, verts );
-	drawnFx++;	
+	drawnFx++;
 }
 
 //----------------------------
@@ -1880,7 +1816,7 @@ void CPoly::CalcRotateMatrix(void)
 
 /*Pitch - aroundx  Yaw - around z
 1 0  0			 c -s 0
-0 c -s			 s  c 0 
+0 c -s			 s  c 0
 0 s  c			 0  0 1
 */
 	mRot[0][0] = cosZ;
@@ -1897,7 +1833,7 @@ void CPoly::CalcRotateMatrix(void)
 Roll
 
  c 0 s
- 0 1 0 
+ 0 1 0
 -s 0 c
 */
 	mLastFrameTime = theFxHelper.mFrameTime;
@@ -1908,7 +1844,7 @@ void CPoly::Rotate(void)
 {
 	vec3_t	temp[MAX_CPOLY_VERTS];
 	float	dif = fabs( (float)(mLastFrameTime - theFxHelper.mFrameTime) );
-	
+
 	if ( dif > 0.1f * mLastFrameTime )
 	{
 		CalcRotateMatrix();
@@ -1932,7 +1868,7 @@ bool CPoly::Update(void)
 	{
 		return false;
 	}
-		
+
 	// If our timestamp hasn't exired yet, we won't even consider doing any kind of motion
 	if ( theFxHelper.mTime > mTimeStamp )
 	{
@@ -1954,11 +1890,11 @@ bool CPoly::Update(void)
 	}
 
 	if ( !Cull())
-	{	
-		// Only update these if the thing is visible.	
+	{
+		// Only update these if the thing is visible.
 		UpdateRGB();
 		UpdateAlpha();
-		
+
 		Draw();
 	}
 
@@ -2051,8 +1987,8 @@ bool CBezier::Update( void )
 	mControl2[2] = mControl2[2] + (ftime * mControl2Vel[2]) + (time2 * mControl2Vel[2]);
 
 	if ( Cull() == false )
-	{	
-		// Only update these if the thing is visible.	
+	{
+		// Only update these if the thing is visible.
 		UpdateSize();
 		UpdateRGB();
 		UpdateAlpha();
@@ -2109,8 +2045,9 @@ inline void CBezier::DrawSegment( vec3_t start, vec3_t end, float texcoord1, flo
 
 	if ( texcoord1 == 0.0f )
 	{
-		*(int *)verts[0].modulate = 0;
-		*(int *)verts[1].modulate = 0;
+		for ( int k=0; k<4; k++ ) {
+			verts[0].modulate[k] = verts[1].modulate[k] = 0;
+		}
 	}
 
 	VectorMA( end, scaleTop, cross, verts[2].xyz );
@@ -2142,7 +2079,7 @@ inline void CBezier::DrawSegment( vec3_t start, vec3_t end, float texcoord1, flo
 const	float	BEZIER_RESOLUTION	= 16.0f;
 
 //----------------------------
-void CBezier::Draw( void )	
+void CBezier::Draw( void )
 {
 	vec3_t	pos, old_pos;
     float	mu, mum1;
@@ -2179,7 +2116,7 @@ void CBezier::Draw( void )
 		VectorCopy( pos, old_pos );
 		tc1 = tc2;
 	}
-	drawnFx++;	
+	drawnFx++;
 }
 
 /*
@@ -2225,7 +2162,7 @@ bool FX_WorldToScreen(vec3_t worldCoord, float *x, float *y)
 
 	transformed[0] = DotProduct(local,vright);
 	transformed[1] = DotProduct(local,vup);
-	transformed[2] = DotProduct(local,vfwd);		
+	transformed[2] = DotProduct(local,vfwd);
 
 	// Make sure Z is not negative.
 	if(transformed[2] < 0.01)
@@ -2284,8 +2221,11 @@ void CFlash::Init( void )
 }
 
 //----------------------------
-void CFlash::Draw( void )	
+void CFlash::Draw( void )
 {
+    // Interestingly, if znear is set > than this, then the flash
+    // doesn't appear at all.
+    const float FLASH_DISTANCE_FROM_VIEWER = 12.0f;
 	mRefEnt.reType = RT_SPRITE;
 
 	if ( mFlags & FX_LOCALIZED_FLASH )
@@ -2297,18 +2237,20 @@ void CFlash::Draw( void )
 		color[2] = mRefEnt.shaderRGBA[2] / 255.0;
 		color[3] = mRefEnt.shaderRGBA[3] / 255.0;
 
-		// add this 2D effect to the proper list. it will get drawn after the cgi.RenderScene call
+		// add this 2D effect to the proper list. it will get drawn after the trap->RenderScene call
 		theFxScheduler.Add2DEffect(mScreenX, mScreenY, mRefEnt.radius, mRefEnt.radius, color, mRefEnt.customShader);
 	}
 	else
 	{
 		VectorCopy( theFxHelper.refdef->vieworg, mRefEnt.origin );
-		VectorMA( mRefEnt.origin, 12, theFxHelper.refdef->viewaxis[0], mRefEnt.origin );
-		mRefEnt.radius = fx_flashRadius->value; // 11.0f
+		VectorMA( mRefEnt.origin, FLASH_DISTANCE_FROM_VIEWER, theFxHelper.refdef->viewaxis[0], mRefEnt.origin );
+
+        // This is assuming that the screen is wider than it is tall.
+        mRefEnt.radius = FLASH_DISTANCE_FROM_VIEWER * tan (DEG2RAD (theFxHelper.refdef->fov_x * 0.5f));
 
 		theFxHelper.AddFxToScene( &mRefEnt );
 	}
-	drawnFx++;	
+	drawnFx++;
 }
 
 void FX_AddPrimitive( CEffect **pEffect, int killTime );

@@ -1,20 +1,38 @@
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 // Task Manager 
 //
 //	-- jweier
 
 
 // this include must remain at the top of every Icarus CPP file
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "IcarusImplementation.h"
 
-#include "BlockStream.h"
-#include "Sequence.h"
-#include "TaskManager.h"
-#include "Sequencer.h"
+#include "blockstream.h"
+#include "sequence.h"
+#include "taskmanager.h"
+#include "sequencer.h"
 
 #define ICARUS_VALIDATE(a) if ( a == false ) return TASK_FAILED;
 
-#define STL_ITERATE( a, b )		for ( a = b.begin(); a != b.end(); a++ )
+#define STL_ITERATE( a, b )		for ( a = b.begin(); a != b.end(); ++a )
 #define STL_INSERT( a, b )		a.insert( a.end(), b );
 
 /*
@@ -566,7 +584,7 @@ int CTaskManager::Get( int entID, CBlock *block, int &memberNum, char **value, C
 					return false;
 				}
 
-				sprintf( (char *) tempBuffer, "%f", temp );
+				Com_sprintf( tempBuffer, sizeof(tempBuffer), "%f", temp );
 				*value = (char *) tempBuffer;
 			}
 			
@@ -583,7 +601,7 @@ int CTaskManager::Get( int entID, CBlock *block, int &memberNum, char **value, C
 					return false;
 				}
 
-				sprintf( (char *) tempBuffer, "%f %f %f", vval[0], vval[1], vval[2] );
+				Com_sprintf( tempBuffer, sizeof(tempBuffer), "%f %f %f", vval[0], vval[1], vval[2] );
 				*value = (char *) tempBuffer;
 			}
 			
@@ -609,7 +627,7 @@ int CTaskManager::Get( int entID, CBlock *block, int &memberNum, char **value, C
 
 		ret = icarus->GetGame()->Random( min, max );
 
-		sprintf( (char *) tempBuffer, "%f", ret );
+		Com_sprintf( tempBuffer, sizeof(tempBuffer), "%f", ret );
 		*value = (char *) tempBuffer;
 
 		return true;
@@ -629,7 +647,7 @@ int CTaskManager::Get( int entID, CBlock *block, int &memberNum, char **value, C
 			return false;
 		}
 
-		sprintf( (char *) tempBuffer, "%f %f %f", vector[0], vector[1], vector[2] );
+		Com_sprintf( tempBuffer, sizeof(tempBuffer), "%f %f %f", vector[0], vector[1], vector[2] );
 		*value = (char *) tempBuffer;
 
 		return true;
@@ -642,7 +660,7 @@ int CTaskManager::Get( int entID, CBlock *block, int &memberNum, char **value, C
 	if ( bm->GetID() == CIcarus::TK_INT )
 	{
 		float fval = (float) (*(int *) block->GetMemberData( memberNum++ ));
-		sprintf( (char *) tempBuffer, "%f", fval );
+		Com_sprintf( tempBuffer, sizeof(tempBuffer), "%f", fval );
 		*value = (char *) tempBuffer;
 
 		return true;
@@ -650,7 +668,7 @@ int CTaskManager::Get( int entID, CBlock *block, int &memberNum, char **value, C
 	else if ( bm->GetID() == CIcarus::TK_FLOAT )
 	{
 		float fval = *(float *) block->GetMemberData( memberNum++ );
-		sprintf( (char *) tempBuffer, "%f", fval );
+		Com_sprintf( tempBuffer, sizeof(tempBuffer), "%f", fval );
 		*value = (char *) tempBuffer;
 
 		return true;
@@ -665,11 +683,11 @@ int CTaskManager::Get( int entID, CBlock *block, int &memberNum, char **value, C
 		{
 			if ( GetFloat( entID, block, memberNum, vval[i], icarus ) == false )
 				return false;
-
-			sprintf( (char *) tempBuffer, "%f %f %f", vval[0], vval[1], vval[2] );
-			*value = (char *) tempBuffer;
 		}
-		
+
+		Com_sprintf( tempBuffer, sizeof(tempBuffer), "%f %f %f", vval[0], vval[1], vval[2] );
+		*value = (char *) tempBuffer;
+
 		return true;
 	}
 	else if ( ( bm->GetID() == CIcarus::TK_STRING ) || ( bm->GetID() == CIcarus::TK_IDENTIFIER ) )
@@ -926,7 +944,7 @@ CallbackCommand
 
 int	CTaskManager::CallbackCommand( CTask *task, int returnCode, CIcarus* icarus )
 {
-	if ( m_owner->Callback( this, task->GetBlock(), returnCode, icarus ) == CSequencer::SEQ_OK, icarus )
+	if ( m_owner->Callback( this, task->GetBlock(), returnCode, icarus ) == CSequencer::SEQ_OK )
 		return Go(icarus);
 
 	assert(0);
@@ -1203,7 +1221,7 @@ int CTaskManager::Sound( CTask *task, CIcarus* icarus )
 	icarus->GetGame()->DebugPrint(IGameInterface::WL_DEBUG, "%4d sound(\"%s\", \"%s\"); [%d]", m_ownerID, sVal, sVal2, task->GetTimeStamp() );
 
 	//Only instantly complete if the user has requested it
-	if( icarus->GetGame()->PlaySound( task->GetGUID(), m_ownerID, sVal2, sVal ) )
+	if( icarus->GetGame()->PlayIcarusSound( task->GetGUID(), m_ownerID, sVal2, sVal ) )
 		Completed( task->GetGUID() );
 	
 	return TASK_OK;
@@ -1660,7 +1678,7 @@ void CTaskManager::Save()
 	CTaskGroup	*taskGroup;
 	const char	*name;
 	CBlock		*block;
-	DWORD		timeStamp;
+	unsigned int		timeStamp;
 	bool		completed;
 	int			id, numCommands;
 	int			numWritten;
@@ -1778,7 +1796,7 @@ void CTaskManager::Save()
 		name = ((*tmi).first).c_str();
 		
 		//Make sure this is a valid string
-		assert( ( name != NULL ) && ( name[0] != NULL ) );
+		assert( ( name != NULL ) && ( name[0] != '\0' ) );
 
 		int length = strlen( name ) + 1;
 
@@ -1812,7 +1830,7 @@ void CTaskManager::Load( CIcarus* icarus )
 	CTaskGroup		*taskGroup;
 	CBlock			*block;
 	CTask			*task;
-	DWORD			timeStamp;
+	unsigned int			timeStamp;
 	bool			completed;
 	void			*bData;
 	int				id, numTasks, numMembers;

@@ -1,11 +1,24 @@
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 //
 // NPC.cpp - generic functions
 //
-
-// leave this line at the top for all NPC_xxxx.cpp files...
-#include "g_headers.h"
-
-
 
 #include "b_local.h"
 #include "anims.h"
@@ -16,7 +29,6 @@
 
 extern vec3_t playerMins;
 extern vec3_t playerMaxs;
-//extern void PM_SetAnimFinal(int *torsoAnim,int *legsAnim,int type,int anim,int priority,int *torsoAnimTimer,int *legsAnimTimer,gentity_t *gent);
 extern void PM_SetTorsoAnimTimer( gentity_t *ent, int *torsoAnimTimer, int time );
 extern void PM_SetLegsAnimTimer( gentity_t *ent, int *legsAnimTimer, int time );
 extern void NPC_BSNoClip ( void );
@@ -998,7 +1010,6 @@ vec3_t NPCDEBUG_BLUE = {0.0, 0.0, 1.0};
 vec3_t NPCDEBUG_LIGHT_BLUE = {0.3f, 0.7f, 1.0};
 extern void CG_Cube( vec3_t mins, vec3_t maxs, vec3_t color, float alpha );
 extern void CG_Line( vec3_t start, vec3_t end, vec3_t color, float alpha );
-extern void CG_Cylinder( vec3_t start, vec3_t end, float radius, vec3_t color );
 
 void NPC_ShowDebugInfo (void)
 {
@@ -1670,6 +1681,8 @@ qboolean G_JediInNormalAI( gentity_t *ent )
 	case BS_FOLLOW_LEADER:
 		return qtrue;
 		break;
+	default:
+		break;
 	}
 	return qfalse;
 }
@@ -1905,8 +1918,6 @@ extern bool Pilot_MasterUpdate();
 
 void NPC_RunBehavior( int team, int bState )
 {
-	qboolean dontSetAim = qfalse;
-
 	//
 	if ( bState == BS_CINEMATIC )
 	{
@@ -1939,7 +1950,6 @@ void NPC_RunBehavior( int team, int bState )
 	else if ( Jedi_CultistDestroyer( NPC ) )
 	{
 		NPC_BSJedi_Default();
-		dontSetAim = qtrue;
 	}
 	else if ( NPC->client->NPC_class == CLASS_SABER_DROID )
 	{//saber droid
@@ -1948,12 +1958,10 @@ void NPC_RunBehavior( int team, int bState )
 	else if ( NPC->client->ps.weapon == WP_SABER )
 	{//jedi
 		NPC_BehaviorSet_Jedi( bState );
-		dontSetAim = qtrue;
 	}
 	else if ( NPC->client->NPC_class == CLASS_REBORN && NPC->client->ps.weapon == WP_MELEE )
 	{//force-only reborn
 		NPC_BehaviorSet_Jedi( bState );
-		dontSetAim = qtrue;
 	}
 	else if ( NPC->client->NPC_class == CLASS_BOBAFETT )
 	{
@@ -1976,7 +1984,6 @@ void NPC_RunBehavior( int team, int bState )
 				}
 			}
 		}
-		dontSetAim = qtrue;
 	}
 	else if ( NPC->client->NPC_class == CLASS_ROCKETTROOPER )
 	{//bounty hunter
@@ -1989,7 +1996,6 @@ void NPC_RunBehavior( int team, int bState )
 			NPC_BehaviorSet_Stormtrooper( bState );
 		}
 		G_CheckCharmed( NPC );
-		dontSetAim = qtrue;
 	}
 	else if ( NPC->client->NPC_class == CLASS_RANCOR )
 	{
@@ -2082,6 +2088,8 @@ void NPC_RunBehavior( int team, int bState )
 			case CLASS_MARK2:
 				NPC_BehaviorSet_Mark2( bState );
 				return;
+			default:
+				break;
 			}
 
 
@@ -2183,7 +2191,6 @@ void NPC_RunBehavior( int team, int bState )
 					NPC_BehaviorSet_Default( bState );
 				}
 				G_CheckCharmed( NPC );
-				dontSetAim = qtrue;
 			}
 			break;
 		}
@@ -2508,6 +2515,8 @@ void NPC_Think ( gentity_t *self)//, int msec )
 					break;
 				case CLASS_GONK:				// droid
 					G_SoundOnEnt(self, CHAN_AUTO, va("sound/chars/gonk/misc/gonktalk%d.wav",Q_irand(1, 2)) );
+					break;
+				default:
 					break;
 				}
 				TIMER_Set( self, "patrolNoise", Q_irand( 2000, 4000 ) );

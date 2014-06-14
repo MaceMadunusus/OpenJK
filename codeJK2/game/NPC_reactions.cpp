@@ -1,3 +1,21 @@
+/*
+This file is part of Jedi Knight 2.
+
+    Jedi Knight 2 is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Knight 2 is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Knight 2.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 //NPC_reactions.cpp
 
 // leave this line at the top for all NPC_xxxx.cpp files...
@@ -244,7 +262,7 @@ void NPC_ChoosePainAnimation( gentity_t *self, gentity_t *other, vec3_t point, i
 	}
 	else 
 	{
-		if ( other && other->s.weapon == WP_SABER || mod == MOD_ELECTROCUTE || mod == MOD_CRUSH/*FIXME:MOD_FORCE_GRIP*/ )
+		if ( other && (other->s.weapon == WP_SABER || mod == MOD_ELECTROCUTE || mod == MOD_CRUSH/*FIXME:MOD_FORCE_GRIP*/) )
 		{
 			pain_chance = 1.0f;//always take pain from saber
 		}
@@ -279,6 +297,7 @@ void NPC_ChoosePainAnimation( gentity_t *self, gentity_t *other, vec3_t point, i
 				|| PM_RollingAnim( self->client->ps.legsAnim )
 				|| (PM_FlippingAnim( self->client->ps.legsAnim )&&!PM_InCartwheel( self->client->ps.legsAnim )) )
 			{//strong attacks, rolls, knockdowns, flips and spins cannot be interrupted by pain
+				return;
 			}
 			else
 			{//play an anim
@@ -551,8 +570,7 @@ void NPC_Touch(gentity_t *self, gentity_t *other, trace_t *trace)
 				G_Sound( player, G_SoundIndex( "sound/weapons/key_pkup.wav" ) );
 				//FIXME: need some event to pass to cgame for sound/graphic/message?
 			}
-			//FIXME: temp message
-			gi.SendServerCommand( NULL, text );
+			gi.SendServerCommand( 0, text );
 		}
 	}
 
@@ -878,6 +896,8 @@ void NPC_Respond( gentity_t *self, int userNum )
 		break;
 	case CLASS_GONK:				// droid
 		G_Sound(self, G_SoundIndex(va("sound/chars/gonk/misc/gonktalk%d.wav",Q_irand(1, 2))));
+		break;
+	default:
 		break;
 	}
 	

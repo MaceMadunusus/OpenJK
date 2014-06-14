@@ -1,9 +1,24 @@
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 // cmodel.c -- model loading
 
 #include "cm_local.h"
-#include "../RMG/RM_Headers.h"
-
-void CM_LoadShaderText(bool forceReload);
 
 #ifdef BSPC
 void SetPlaneSignbits (cplane_t *out) {
@@ -247,6 +262,13 @@ void CMod_LoadBrushes( lump_t *l, clipMap_t &cm ) {
 			Com_Error( ERR_DROP, "CMod_LoadBrushes: bad shaderNum: %i", out->shaderNum );
 		}
 		out->contents = cm.shaders[out->shaderNum].contentFlags;
+#ifdef JK2_MODE
+		//JK2 HACK: for water that cuts vis but is not solid!!! (used on yavin swamp)
+		if ( cm.shaders[out->shaderNum].surfaceFlags & SURF_SLICK )
+		{
+			out->contents &= ~CONTENTS_SOLID;
+		}
+#endif
 		CM_OrOfAllContentsFlagsInMap |= out->contents;
 		out->checkcount=0;
 
@@ -549,27 +571,6 @@ void CM_FreeMap(void) {
 }
 #endif //BSPC
 
-unsigned CM_LumpChecksum(lump_t *lump) {
-	return LittleLong (Com_BlockChecksum (cmod_base + lump->fileofs, lump->filelen));
-}
-
-unsigned CM_Checksum(dheader_t *header) {
-	unsigned checksums[16];
-	checksums[0] = CM_LumpChecksum(&header->lumps[LUMP_SHADERS]);
-	checksums[1] = CM_LumpChecksum(&header->lumps[LUMP_LEAFS]);
-	checksums[2] = CM_LumpChecksum(&header->lumps[LUMP_LEAFBRUSHES]);
-	checksums[3] = CM_LumpChecksum(&header->lumps[LUMP_LEAFSURFACES]);
-	checksums[4] = CM_LumpChecksum(&header->lumps[LUMP_PLANES]);
-	checksums[5] = CM_LumpChecksum(&header->lumps[LUMP_BRUSHSIDES]);
-	checksums[6] = CM_LumpChecksum(&header->lumps[LUMP_BRUSHES]);
-	checksums[7] = CM_LumpChecksum(&header->lumps[LUMP_MODELS]);
-	checksums[8] = CM_LumpChecksum(&header->lumps[LUMP_NODES]);
-	checksums[9] = CM_LumpChecksum(&header->lumps[LUMP_SURFACES]);
-	checksums[10] = CM_LumpChecksum(&header->lumps[LUMP_DRAWVERTS]);
-
-	return LittleLong(Com_BlockChecksum(checksums, 11 * 4));
-}
-
 /*
 ==================
 CM_LoadMap
@@ -612,7 +613,7 @@ qboolean CM_DeleteCachedMap(qboolean bGuaranteedOkToDelete)
 
 static void CM_LoadMap_Actual( const char *name, qboolean clientload, int *checksum, clipMap_t &cm ) {
 	const int		*buf;
-	int				i;
+	size_t			i;
 	dheader_t		header;
 	static unsigned	last_checksum;
 	void			*subBSPData = NULL;
@@ -783,14 +784,7 @@ static void CM_LoadMap_Actual( const char *name, qboolean clientload, int *check
 
 		if (&cm == &cmg)
 		{
-#if !defined(BSPC)
-			CM_LoadShaderText(false);
-//			MAT_Init((bool)(!clientload));
-#endif
 			CM_InitBoxHull ();
-#if !defined(BSPC)
-			CM_SetupShaderProperties();
-#endif
 
 			Q_strncpyz( gsCachedMapDiskImage, name, sizeof(gsCachedMapDiskImage) );	// so the renderer can check it
 		}
@@ -815,6 +809,7 @@ void CM_LoadMap( const char *name, qboolean clientload, int *checksum, qboolean 
 {
 	if (subBSP)
 	{
+		Com_DPrintf("^5CM_LoadMap->CMLoadSubBSP(%s, %i)\n", name, qfalse);
 		CM_LoadSubBSP(va("maps/%s.bsp", ((const char *)name) + 1), qfalse);
 		//CM_LoadMap_Actual( name, clientload, checksum, cmg );
 	}
@@ -835,7 +830,7 @@ void CM_LoadMap( const char *name, qboolean clientload, int *checksum, qboolean 
 	*/
 }
 
-qboolean CM_SameMap(char *server)
+qboolean CM_SameMap(const char *server)
 {
 	if (!cmg.name[0] || !server || !server[0])
 	{
@@ -850,16 +845,6 @@ qboolean CM_SameMap(char *server)
 	return qtrue;
 }
 
-qboolean CM_HasTerrain(void)
-{
-	if (cmg.landScape)
-	{
-		return qtrue;
-	}
-
-	return qfalse;
-}
-
 /*
 ==================
 CM_ClearMap
@@ -870,23 +855,6 @@ void CM_ClearMap( void )
 	int		i;
 
 	CM_OrOfAllContentsFlagsInMap = CONTENTS_BODY;
-
-#if !defined(BSPC)
-	CM_ShutdownShaderProperties();
-//	MAT_Shutdown();
-#endif
-
-	if (TheRandomMissionManager)
-	{
-		delete TheRandomMissionManager;
-		TheRandomMissionManager = 0;
-	}
-
-	if (cmg.landScape)
-	{
-		delete cmg.landScape;
-		cmg.landScape = 0;
-	}
 
 	memset( &cmg, 0, sizeof( cmg ) );
 	CM_ClearLevelPatches();
@@ -958,6 +926,7 @@ cmodel_t	*CM_ClipHandleToModel( clipHandle_t handle, clipMap_t **clipMap )
 
 	return NULL;
 }
+
 /*
 ==================
 CM_InlineModel
@@ -965,13 +934,9 @@ CM_InlineModel
 */
 clipHandle_t	CM_InlineModel( int index ) {
 	if ( index < 0 || index >= TotalSubModels ) {
-		Com_Error (ERR_DROP, "CM_InlineModel: bad number (may need to re-BSP map?)");
+		Com_Error( ERR_DROP, "CM_InlineModel: bad number: %d >= %d (may need to re-BSP map?)", index, TotalSubModels );
 	}
 	return index;
-}
-
-int		CM_NumClusters( void ) {
-	return cmg.numClusters;
 }
 
 int		CM_NumInlineModels( void ) {
@@ -1105,63 +1070,6 @@ void CM_ModelBounds( clipMap_t &cm, clipHandle_t model, vec3_t mins, vec3_t maxs
 	VectorCopy( cmod->maxs, maxs );
 }
 
-/*
-===================
-CM_RegisterTerrain
-
-Allows physics to examine the terrain data.
-===================
-*/
-#if !defined(BSPC)
-CCMLandScape *CM_RegisterTerrain(const char *config, bool server)
-{
-	thandle_t		terrainId;
-	CCMLandScape	*ls;
-
-	terrainId = atol(Info_ValueForKey(config, "terrainId"));
-	if(terrainId && cmg.landScape)
-	{
-		// Already spawned so just return
-		ls = cmg.landScape;
-		ls->IncreaseRefCount();
-		return(ls);
-	}
-	// Doesn't exist so create and link in
-	//cmg.numTerrains++;
-	ls = CM_InitTerrain(config, 1, server);
-
-	// Increment for the next instance
-	if (cmg.landScape)
-	{
-		Com_Error(ERR_DROP, "You can't have more than one terrain brush.");
-	}
-	cmg.landScape = ls;
-	return(ls);
-}
-
-/*
-===================
-CM_ShutdownTerrain
-===================
-*/
-
-void CM_ShutdownTerrain( thandle_t terrainId)
-{
-	CCMLandScape	*landscape;
-
-	landscape = cmg.landScape;
-	if (landscape)
-	{
-		landscape->DecreaseRefCount();
-		if(landscape->GetRefCount() <= 0)
-		{
-			delete landscape;
-			cmg.landScape = NULL;
-		}
-	}
-}
-#endif
-
 int CM_LoadSubBSP(const char *name, qboolean clientload)
 {
 	int		i;
@@ -1171,7 +1079,7 @@ int CM_LoadSubBSP(const char *name, qboolean clientload)
 	count = cmg.numSubModels;
 	for(i = 0; i < NumSubBSP; i++)
 	{
-		if (!stricmp(name, SubBSP[i].name))
+		if (!Q_stricmp(name, SubBSP[i].name))
 		{
 			return count;
 		}
@@ -1182,6 +1090,8 @@ int CM_LoadSubBSP(const char *name, qboolean clientload)
 	{
 		Com_Error (ERR_DROP, "CM_LoadSubBSP: too many unique sub BSPs");
 	}
+
+	Com_DPrintf("CM_LoadSubBSP(%s, %i)\n", name, clientload);
 
 	CM_LoadMap_Actual( name, clientload, &checksum, SubBSP[NumSubBSP] );
 	NumSubBSP++;
@@ -1274,12 +1184,12 @@ Writes the portal state to a savegame file
 ===================
 */
 //
-qboolean SG_Append(unsigned long chid, const void *data, int length);
-int SG_Read(unsigned long chid, void *pvAddress, int iLength, void **ppvAddressPtr = NULL);
+qboolean SG_Append(unsigned int chid, const void *data, int length);
+int SG_Read(unsigned int chid, void *pvAddress, int iLength, void **ppvAddressPtr = NULL);
 
 void CM_WritePortalState ()
 {	
-	SG_Append('PRTS', (void *)cmg.areaPortals, cmg.numAreas * cmg.numAreas * sizeof( *cmg.areaPortals ));
+	SG_Append(INT_ID('P','R','T','S'), (void *)cmg.areaPortals, cmg.numAreas * cmg.numAreas * sizeof( *cmg.areaPortals ));
 }
 
 /*
@@ -1292,7 +1202,7 @@ and recalculates the area connections
 */
 void	CM_ReadPortalState ()
 {
-	SG_Read('PRTS', (void *)cmg.areaPortals, cmg.numAreas * cmg.numAreas * sizeof( *cmg.areaPortals ));
+	SG_Read(INT_ID('P','R','T','S'), (void *)cmg.areaPortals, cmg.numAreas * cmg.numAreas * sizeof( *cmg.areaPortals ));
 	CM_FloodAreaConnections (cmg);
 }
 

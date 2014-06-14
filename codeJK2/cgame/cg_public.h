@@ -1,7 +1,25 @@
+/*
+This file is part of Jedi Knight 2.
+
+    Jedi Knight 2 is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Knight 2 is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Knight 2.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 #define NUM_EXPLOSION_SHADERS	8
 #define NUM_EXPLOSION_FRAMES	3
 
-#define	CMD_BACKUP			64	
+#define	CMD_BACKUP			64
 #define	CMD_MASK			(CMD_BACKUP - 1)
 // allow a lot of command backups for very fast systems
 // multiple commands may be combined into a single packet, so this
@@ -18,10 +36,9 @@
 // Snapshots are generated at regular time intervals by the server,
 // but they may not be sent if a client's rate level is exceeded, or
 // they may be dropped by the network.
-struct snapshot_s 
+struct snapshot_s
 {
 	int				snapFlags;			// SNAPFLAG_RATE_DELAYED, SNAPFLAG_DROPPED_COMMANDS
-	int				ping;
 
 	int				serverTime;		// server time the message is valid for (in msec)
 
@@ -173,6 +190,9 @@ Ghoul2 Insert End
 	CG_SP_GETSTRINGTEXT,
 	CG_UI_GETITEMTEXT,
 	CG_ANYLANGUAGE_READFROMSTRING2,
+
+	CG_OPENJK_MENU_PAINT,
+	CG_OPENJK_GETMENU_BYNAME,
 } cgameImport_t;
 
 //----------------------------------------------

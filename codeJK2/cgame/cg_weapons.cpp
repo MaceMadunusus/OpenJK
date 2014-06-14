@@ -1,12 +1,27 @@
-// this line must stay at top so the whole PCH thing works...
-#include "cg_headers.h"
+/*
+This file is part of Jedi Knight 2.
 
-//#include "cg_local.h"
+    Jedi Knight 2 is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Knight 2 is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Knight 2.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
+#include "cg_local.h"
 #include "cg_media.h"
 #include "FxScheduler.h"
-#include "..\game\wp_saber.h"
-
-#include "..\game\anims.h"
+#include "../game/wp_saber.h"
+#include "../game/g_local.h"
+#include "../game/anims.h"
 
 extern void CG_LightningBolt( centity_t *cent, vec3_t origin );
 
@@ -38,6 +53,10 @@ void CG_RegisterWeapon( int weaponNum ) {
 		return;
 	}
 
+	if ( weaponNum >= WP_NUM_WEAPONS ) {
+		return;
+	}
+
 	if ( weaponInfo->registered ) {
 		return;
 	}
@@ -64,21 +83,21 @@ void CG_RegisterWeapon( int weaponNum ) {
 	{//in case the weaponmodel isn't _w, precache the _w.glm
 		char weaponModel[64];
 		
-		strcpy (weaponModel, weaponData[weaponNum].weaponMdl);	
+		Q_strncpyz (weaponModel, weaponData[weaponNum].weaponMdl, sizeof(weaponModel));	
 		if (char *spot = strstr(weaponModel, ".md3") ) 
 		{
 			*spot = 0;
 			spot = strstr(weaponModel, "_w");//i'm using the in view weapon array instead of scanning the item list, so put the _w back on
 			if (!spot) 
 			{
-				strcat (weaponModel, "_w");
+				Q_strcat (weaponModel, sizeof(weaponModel), "_w");
 			}
-			strcat (weaponModel, ".glm");	//and change to ghoul2
+			Q_strcat (weaponModel, sizeof(weaponModel), ".glm");	//and change to ghoul2
 		}
 		gi.G2API_PrecacheGhoul2Model( weaponModel ); // correct way is item->world_model
 	}
 
-	if ( weaponInfo->weaponModel == NULL )
+	if ( weaponInfo->weaponModel == NULL_HANDLE )
 	{
 		CG_Error( "Couldn't find weapon model %s\n", weaponData[weaponNum].classname);
 		return;
@@ -108,16 +127,17 @@ void CG_RegisterWeapon( int weaponNum ) {
 	}
 
 	for (i=0; i< weaponData[weaponNum].numBarrels; i++) {
-		Q_strncpyz( path, weaponData[weaponNum].weaponMdl, MAX_QPATH );
-		COM_StripExtension( path, path );
+		Q_strncpyz( path, weaponData[weaponNum].weaponMdl, sizeof(path) );
+		COM_StripExtension( path, path, sizeof(path) );
 		if (i)
 		{
-			char	crap[50];
-			sprintf(crap, "_barrel%d.md3", i+1);
-			strcat( path, crap);
+			//char	crap[50];
+			//Com_sprintf(crap, sizeof(crap), "_barrel%d.md3", i+1 );
+			//strcat ( path, crap );
+			Q_strcat( path, sizeof(path), va("_barrel%d.md3", i+1) );
 		}
 		else
-			strcat( path, "_barrel.md3" );
+			Q_strcat( path, sizeof(path), "_barrel.md3" );
 		weaponInfo->barrelModel[i] = cgi_R_RegisterModel( path );
 	}
 
@@ -129,9 +149,9 @@ void CG_RegisterWeapon( int weaponNum ) {
 	}
 
 	// set up the hand that holds the in view weapon - assuming we have one
-	strcpy( path, weaponData[weaponNum].weaponMdl );
-	COM_StripExtension( path, path );
-	strcat( path, "_hand.md3" );
+	Q_strncpyz( path, weaponData[weaponNum].weaponMdl, sizeof(path) );
+	COM_StripExtension( path, path, sizeof(path) );
+	Q_strcat( path, sizeof(path), "_hand.md3" );
 	weaponInfo->handsModel = cgi_R_RegisterModel( path );
 
 	if ( !weaponInfo->handsModel ) {
@@ -525,7 +545,7 @@ void CG_RegisterItemVisuals( int itemNum ) {
 
 	item = &bg_itemlist[ itemNum ];
 
-	memset( itemInfo, 0, sizeof( &itemInfo ) );
+	memset( itemInfo, 0, sizeof( *itemInfo ) );
 	itemInfo->registered = qtrue;
 
 	itemInfo->models = cgi_R_RegisterModel( item->world_model );
@@ -877,7 +897,13 @@ void CG_AddViewWeapon( playerState_t *ps )
 	weaponData_t  *wData;
 	centity_t	*cent;
 	float		fovOffset, leanOffset;
+	float		cgFov = (cg_fovViewmodel.integer) ? cg_fovViewmodel.integer : cg_fov.integer;
 	int i;
+
+	if (cgFov < 1)
+		cgFov = 1;
+	else if (cgFov > 130)
+		cgFov = 130;
 
 	// no gun if in third person view
 	if ( cg.renderingThirdPerson )
@@ -886,7 +912,7 @@ void CG_AddViewWeapon( playerState_t *ps )
 	if ( ps->pm_type == PM_INTERMISSION )
 		return;
 
-	cent = &cg_entities[cg.snap->ps.clientNum];
+	cent = &cg_entities[ps->clientNum];
 
 	if ( ps->eFlags & EF_LOCKED_TO_WEAPON )
 	{
@@ -947,16 +973,18 @@ void CG_AddViewWeapon( playerState_t *ps )
 
 	// drop gun lower at higher fov
 	float actualFOV;
+		gentity_t	*player = &g_entities[0];
 	if ( (cg.snap->ps.forcePowersActive&(1<<FP_SPEED)) && player->client->ps.forcePowerDuration[FP_SPEED] )//cg.renderingThirdPerson && 
 	{
 		actualFOV = CG_ForceSpeedFOV();
+		actualFOV = (cg_fovViewmodel.integer) ? actualFOV + (cg_fovViewmodel.integer - cg_fov.integer) : actualFOV;
 	}
 	else
 	{
 		actualFOV = (cg.overrides.active&CG_OVERRIDE_FOV) ? cg.overrides.fov : cg_fov.value;
 	}
 
-	if ( actualFOV > 80 ) 
+	if ( cg_fovViewmodelAdjust.integer && actualFOV > 80 ) 
 	{
 		fovOffset = -0.1 * ( actualFOV - 80 );
 	} 
@@ -965,11 +993,11 @@ void CG_AddViewWeapon( playerState_t *ps )
 		fovOffset = 0;
 	}
 
-	if ( cg.snap->ps.leanofs != 0 )
+	if ( ps->leanofs != 0 )
 	{
 		//add leaning offset
-		leanOffset = cg.snap->ps.leanofs * 0.25f;
-		fovOffset += fabs((double)cg.snap->ps.leanofs) * -0.1f;
+		leanOffset = ps->leanofs * 0.25f;
+		fovOffset += fabs((double)ps->leanofs) * -0.1f;
 	}
 	else
 	{
@@ -990,6 +1018,11 @@ void CG_AddViewWeapon( playerState_t *ps )
 			weapon->firingSound );
 	}
 
+	if ( ps->weapon == WP_NONE )
+	{
+		return;
+	}
+
 	// set up gun position
 	CG_CalculateWeaponPosition( hand.origin, angles );
 
@@ -998,6 +1031,13 @@ void CG_AddViewWeapon( playerState_t *ps )
 	VectorMA( hand.origin, (cg_gun_z.value+fovOffset), cg.refdef.viewaxis[2], hand.origin );
 
 	AnglesToAxis( angles, hand.axis );
+
+	if ( cg_fovViewmodel.integer )
+	{
+		float fracDistFOV = tanf( cg.refdef.fov_x * ( M_PI/180 ) * 0.5f );
+		float fracWeapFOV = ( 1.0f / fracDistFOV ) * tanf( cgFov * ( M_PI/180 ) * 0.5f );
+		VectorScale( hand.axis[0], fracWeapFOV, hand.axis[0] );
+	}
 
 	// map torso animations to weapon animations
 	if ( cg_gun_frame.integer ) 
@@ -1594,7 +1634,7 @@ void CG_DrawDataPadWeaponSelect( void )
 
 	cgi_SP_GetStringTextString( va("INGAME_%s",weaponDesc[cg.DataPadWeaponSelect-1]), text, sizeof(text) );
 
-	if (text)
+	if (text[0])
 	{
 		CG_DisplayBoxedText(70,50,500,300,text,
 												cgs.media.qhFontSmall,
@@ -1767,7 +1807,7 @@ void CG_DrawWeaponSelect( void )
 	int		holdX,x,y,x2,y2,pad;
 	int		sideLeftIconCnt,sideRightIconCnt;
 	int		sideMax,holdCount,iconCnt;
-	int		height;
+	//int		height;
 	vec4_t	calcColor;
 	vec4_t	textColor = { .875f, .718f, .121f, 1.0f };
 
@@ -1851,7 +1891,7 @@ void CG_DrawWeaponSelect( void )
 	cgi_R_SetColor( calcColor);					
 	// Work backwards from current icon
 	holdX = x - ((bigIconSize/2) + pad + smallIconSize);
-	height = smallIconSize * cg.iconHUDPercent;
+	//height = smallIconSize * cg.iconHUDPercent;
 
 	for (iconCnt=1;iconCnt<(sideLeftIconCnt+1);i--)
 	{
@@ -1887,7 +1927,7 @@ void CG_DrawWeaponSelect( void )
 	}
 
 	// Current Center Icon
-	height = bigIconSize * cg.iconHUDPercent;
+	//height = bigIconSize * cg.iconHUDPercent;
 	cgi_R_SetColor(NULL);
 	if (weaponData[cg.weaponSelect].weaponIcon[0])
 	{
@@ -1915,7 +1955,7 @@ void CG_DrawWeaponSelect( void )
 	// Work forwards from current icon
 	cgi_R_SetColor( calcColor);					
 	holdX = x + (bigIconSize/2) + pad;
-	height = smallIconSize * cg.iconHUDPercent;
+	//height = smallIconSize * cg.iconHUDPercent;
 	for (iconCnt=1;iconCnt<(sideRightIconCnt+1);i++)
 	{
 		if (i>13)
@@ -2547,7 +2587,7 @@ Caused by an EV_FIRE_WEAPON event
 void CG_FireWeapon( centity_t *cent, qboolean alt_fire ) 
 {
 	entityState_t *ent;
-	weaponInfo_t	*weap;
+	//weaponInfo_t	*weap;
 
 	ent = &cent->currentState;
 	if ( ent->weapon == WP_NONE ) {
@@ -2557,7 +2597,7 @@ void CG_FireWeapon( centity_t *cent, qboolean alt_fire )
 		CG_Error( "CG_FireWeapon: ent->weapon >= WP_NUM_WEAPONS" );
 		return;
 	}
-	weap = &cg_weapons[ ent->weapon ];
+	//weap = &cg_weapons[ ent->weapon ];
 
 	// mark the entity as muzzle flashing, so when it is added it will
 	// append the flash to the weapon model

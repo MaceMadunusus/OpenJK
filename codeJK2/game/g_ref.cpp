@@ -1,3 +1,21 @@
+/*
+This file is part of Jedi Knight 2.
+
+    Jedi Knight 2 is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Knight 2 is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Knight 2.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 // Reference tag utility functions
 // leave this line at the top for all g_xxxx.cpp files...
 #include "g_headers.h"
@@ -147,7 +165,7 @@ reference_tag_t	*TAG_Find( const char *owner, const char *name )
 		char	tempName[ MAX_REFNAME ];
 
 		Q_strncpyz( (char *) tempName, name, MAX_REFNAME );
-		strlwr( (char *) tempName );	//NOTENOTE: For case insensitive searches on a map
+		Q_strlwr( (char *) tempName );	//NOTENOTE: For case insensitive searches on a map
 
 		rti = tagOwner->tagMap.find( tempName );
 		
@@ -184,7 +202,7 @@ reference_tag_t	*TAG_Add( const char *name, const char *owner, vec3_t origin, ve
 
 	//Copy the name
 	Q_strncpyz( (char *) tag->name, name, MAX_REFNAME );
-	strlwr( (char *) tag->name );	//NOTENOTE: For case insensitive searches on a map
+	Q_strlwr( (char *) tag->name );	//NOTENOTE: For case insensitive searches on a map
 
 	//Make sure this tag's name isn't alread in use
 	if ( TAG_Find( owner, name ) )
@@ -371,7 +389,7 @@ void ref_link ( gentity_t *ent )
 		}
 		else
 		{
-			gi.Printf( S_COLOR_RED"ERROR: ref_tag (%s) has invalid target (%s)", ent->targetname, ent->target );
+			gi.Printf( S_COLOR_RED"ERROR: ref_tag (%s) has invalid target (%s)\n", ent->targetname, ent->target );
 		}
 	}
 	

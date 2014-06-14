@@ -1,3 +1,21 @@
+/*
+This file is part of Jedi Knight 2.
+
+    Jedi Knight 2 is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Knight 2 is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Knight 2.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 // Script Command Sequencer
 //
 //	-- jweier
@@ -5,6 +23,7 @@
 // this include must remain at the top of every Icarus CPP file
 #include "icarus.h"
 #include "g_headers.h"
+#include "g_shared.h"
 
 #include "assert.h"
 
@@ -348,7 +367,7 @@ int CSequencer::ParseRun( CBlock *block )
 	int			buffer_size;
 
 	//Get the name and format it
-	StripExtension( (char*) block->GetMemberData( 0 ), (char *) newname );
+	COM_StripExtension( (char*) block->GetMemberData( 0 ), (char *) newname, sizeof(newname) );
 
 	//Get the file from the game engine
   	buffer_size = m_ie->I_LoadFile( newname, (void **) &buffer );
@@ -1061,13 +1080,13 @@ int CSequencer::EvaluateConditional( CBlock *block )
 	switch ( id )
 	{
 	case TK_FLOAT:
-		sprintf( (char *) tempString1, "%.3f", *(float *) bm->GetData() );
+		Com_sprintf( tempString1, sizeof( tempString1 ), "%.3f", *(float *) bm->GetData() );
 		p1 = (char *) tempString1;
 		break;
 
 	case TK_VECTOR:
 
-		tempString1[0] = NULL;
+		tempString1[0] = '\0';
 
 		for ( i = 0; i < 3; i++ )
 		{
@@ -1075,7 +1094,7 @@ int CSequencer::EvaluateConditional( CBlock *block )
 			vec[i] = *(float *) bm->GetData();
 		}
 
-		sprintf( (char *) tempString1, "%.3f %.3f %.3f", vec[0], vec[1], vec[2] );
+		Com_sprintf( tempString1, sizeof( tempString1 ), "%.3f %.3f %.3f", vec[0], vec[1], vec[2] );
 		p1 = (char *) tempString1;
 
 		break;
@@ -1108,7 +1127,7 @@ int CSequencer::EvaluateConditional( CBlock *block )
 					if ( m_ie->I_GetFloat( m_ownerID, type, name, &fVal ) == false)
 						return false;
 
-					sprintf( (char *) tempString1, "%.3f", fVal );
+					Com_sprintf( tempString1, sizeof( tempString1 ), "%.3f", fVal );
 					p1 = (char *) tempString1;
 				}
 				
@@ -1121,7 +1140,7 @@ int CSequencer::EvaluateConditional( CBlock *block )
 					if ( m_ie->I_GetFloat( m_ownerID, type, name, &fVal ) == false)
 						return false;
 
-					sprintf( (char *) tempString1, "%d", (int) fVal );
+					Com_sprintf( tempString1, sizeof( tempString1 ), "%d", (int) fVal );
 					p1 = (char *) tempString1;
 				}
 				break;
@@ -1140,7 +1159,7 @@ int CSequencer::EvaluateConditional( CBlock *block )
 					if ( m_ie->I_GetVector( m_ownerID, type, name, vVal ) == false)
 						return false;
 
-					sprintf( (char *) tempString1, "%.3f %.3f %.3f", vVal[0], vVal[1], vVal[2] );
+					Com_sprintf( tempString1, sizeof( tempString1 ), "%.3f %.3f %.3f", vVal[0], vVal[1], vVal[2] );
 					p1 = (char *) tempString1;
 				}
 				
@@ -1161,7 +1180,7 @@ int CSequencer::EvaluateConditional( CBlock *block )
 			//A float value is returned from the function
 			t1 = TK_FLOAT;
 
-			sprintf( (char *) tempString1, "%.3f", m_ie->I_Random( min, max ) );
+			Com_sprintf( tempString1, sizeof( tempString1 ), "%.3f", m_ie->I_Random( min, max ) );
 			p1 = (char *) tempString1;
 		}
 
@@ -1184,7 +1203,7 @@ int CSequencer::EvaluateConditional( CBlock *block )
 				return false;
 			}
 
-			sprintf( (char *) tempString1, "%.3f %.3f %.3f", vec[0], vec[1], vec[2] );
+			Com_sprintf( tempString1, sizeof( tempString1 ), "%.3f %.3f %.3f", vec[0], vec[1], vec[2] );
 			p1 = (char *) tempString1;
 
 			break;
@@ -1231,13 +1250,13 @@ int CSequencer::EvaluateConditional( CBlock *block )
 	switch ( id )
 	{
 	case TK_FLOAT:
-		sprintf( (char *) tempString2, "%.3f", *(float *) bm->GetData() );
+		Com_sprintf( tempString2, sizeof( tempString2 ), "%.3f", *(float *) bm->GetData() );
 		p2 = (char *) tempString2;
 		break;
 
 	case TK_VECTOR:
 
-		tempString2[0] = NULL;
+		tempString2[0] = '\0';
 
 		for ( i = 0; i < 3; i++ )
 		{
@@ -1245,7 +1264,7 @@ int CSequencer::EvaluateConditional( CBlock *block )
 			vec[i] = *(float *) bm->GetData();
 		}
 
-		sprintf( (char *) tempString2, "%.3f %.3f %.3f", vec[0], vec[1], vec[2] );
+		Com_sprintf( tempString2, sizeof( tempString2 ), "%.3f %.3f %.3f", vec[0], vec[1], vec[2] );
 		p2 = (char *) tempString2;
 
 		break;
@@ -1278,7 +1297,7 @@ int CSequencer::EvaluateConditional( CBlock *block )
 					if ( m_ie->I_GetFloat( m_ownerID, type, name, &fVal ) == false)
 						return false;
 
-					sprintf( (char *) tempString2, "%.3f", fVal );
+					Com_sprintf( tempString2, sizeof( tempString2 ), "%.3f", fVal );
 					p2 = (char *) tempString2;
 				}
 				
@@ -1291,7 +1310,7 @@ int CSequencer::EvaluateConditional( CBlock *block )
 					if ( m_ie->I_GetFloat( m_ownerID, type, name, &fVal ) == false)
 						return false;
 
-					sprintf( (char *) tempString2, "%d", (int) fVal );
+					Com_sprintf( tempString2, sizeof( tempString2 ), "%d", (int) fVal );
 					p2 = (char *) tempString2;
 				}
 				break;
@@ -1310,7 +1329,7 @@ int CSequencer::EvaluateConditional( CBlock *block )
 					if ( m_ie->I_GetVector( m_ownerID, type, name, vVal ) == false)
 						return false;
 
-					sprintf( (char *) tempString2, "%.3f %.3f %.3f", vVal[0], vVal[1], vVal[2] );
+					Com_sprintf( tempString2, sizeof( tempString2 ), "%.3f %.3f %.3f", vVal[0], vVal[1], vVal[2] );
 					p2 = (char *) tempString2;
 				}
 				
@@ -1332,7 +1351,7 @@ int CSequencer::EvaluateConditional( CBlock *block )
 			//A float value is returned from the function
 			t2 = TK_FLOAT;
 
-			sprintf( (char *) tempString2, "%.3f", m_ie->I_Random( min, max ) );
+			Com_sprintf( tempString2, sizeof( tempString2 ), "%.3f", m_ie->I_Random( min, max ) );
 			p2 = (char *) tempString2;
 		}
 
@@ -1356,7 +1375,7 @@ int CSequencer::EvaluateConditional( CBlock *block )
 				return false;
 			}
 
-			sprintf( (char *) tempString2, "%.3f %.3f %.3f", vec[0], vec[1], vec[2] );
+			Com_sprintf( tempString2, sizeof( tempString2 ), "%.3f %.3f %.3f", vec[0], vec[1], vec[2] );
 			p2 = (char *) tempString2;
 
 			break;
@@ -2195,31 +2214,6 @@ CBlock *CSequencer::PopCommand( int flag )
 }
 
 /*
-========================
-StripExtension
-
-Filename ultility.  Probably get rid of this if I decided to use CStrings...
-========================
-*/
-
-void CSequencer::StripExtension( const char *in, char *out )
-{
-	int		i = strlen(in) + 1;
-	
-	while ( (in[i] != '.') && (i >= 0) )
-	 i--;
-
-	if ( i < 0 )
-	{
-		strcpy(out, in);
-		return;
-	}
-
-	strncpy(out, in, i);
-}
-
-
-/*
 -------------------------
 RemoveSequence
 -------------------------
@@ -2265,7 +2259,13 @@ int CSequencer::DestroySequence( CSequence *sequence )
 	{
 		if((*tsi).second == sequence)
 		{
+#ifdef _WIN32
 			tsi = m_taskSequences.erase(tsi);
+#else
+			taskSequence_m::iterator itTemp = tsi;
+			tsi++;
+			m_taskSequences.erase(itTemp);
+#endif
 		}
 		else
 		{
@@ -2332,16 +2332,16 @@ int	CSequencer::Save( void )
 	numSequences = m_sequences.size();
 
 	//Save out the owner sequence
-	m_ie->I_WriteSaveData( 'SQRE', &m_ownerID, sizeof( m_ownerID ) );
+	m_ie->I_WriteSaveData( INT_ID('S','Q','R','E'), &m_ownerID, sizeof( m_ownerID ) );
 
 	//Write out the number of sequences we need to read
-	m_ie->I_WriteSaveData( 'SQR#', &numSequences, sizeof( numSequences ) );
+	m_ie->I_WriteSaveData( INT_ID('S','Q','R','#'), &numSequences, sizeof( numSequences ) );
 
 	//Second pass, save out all sequences, in order
 	STL_ITERATE( si, m_sequences )
 	{
 		id = (*si)->GetID();
-		m_ie->I_WriteSaveData( 'SQRI', &id, sizeof( id ) );
+		m_ie->I_WriteSaveData( INT_ID('S','Q','R','I'), &id, sizeof( id ) );
 	}
 
 	//Save out the taskManager
@@ -2349,29 +2349,29 @@ int	CSequencer::Save( void )
 
 	//Save out the task sequences mapping the name to the GUIDs
 	numTasks = m_taskSequences.size();
-	m_ie->I_WriteSaveData( 'SQT#', &numTasks, sizeof ( numTasks ) );
+	m_ie->I_WriteSaveData( INT_ID('S','Q','T','#'), &numTasks, sizeof ( numTasks ) );
 
 	STL_ITERATE( ti, m_taskSequences )
 	{	
 		//Save the task group's ID
 		id = ((*ti).first)->GetGUID();
-		m_ie->I_WriteSaveData( 'STID', &id, sizeof( id ) );
+		m_ie->I_WriteSaveData( INT_ID('S','T','I','D'), &id, sizeof( id ) );
 
 		//Save the sequence's ID
 		id = ((*ti).second)->GetID();
-		m_ie->I_WriteSaveData( 'SSID', &id, sizeof( id ) );
+		m_ie->I_WriteSaveData( INT_ID('S','S','I','D'), &id, sizeof( id ) );
 	}
 
 	int	curGroupID = ( m_curGroup == NULL ) ? -1 : m_curGroup->GetGUID();
 
-	m_ie->I_WriteSaveData( 'SQCT', &curGroupID, sizeof ( m_numCommands ) );
+	m_ie->I_WriteSaveData( INT_ID('S','Q','C','T'), &curGroupID, sizeof ( m_numCommands ) );
 
 	//Output the number of commands
-	m_ie->I_WriteSaveData( 'SQ#C', &m_numCommands, sizeof ( m_numCommands ) );	//FIXME: This can be reconstructed
+	m_ie->I_WriteSaveData( INT_ID('S','Q','#','C'), &m_numCommands, sizeof ( m_numCommands ) );	//FIXME: This can be reconstructed
 
 	//Output the ID of the current sequence
 	id = ( m_curSequence != NULL ) ? m_curSequence->GetID() : -1;
-	m_ie->I_WriteSaveData( 'SQCS', &id, sizeof ( id ) );
+	m_ie->I_WriteSaveData( INT_ID('S','Q','C','S'), &id, sizeof ( id ) );
 
 	return true;
 }
@@ -2387,7 +2387,7 @@ int	CSequencer::Load( void )
 	int i;
 
 	//Get the owner of this sequencer
-	m_ie->I_ReadSaveData( 'SQRE', &m_ownerID, sizeof( m_ownerID ), NULL );
+	m_ie->I_ReadSaveData( INT_ID('S','Q','R','E'), &m_ownerID, sizeof( m_ownerID ), NULL );
 
 	//Link the entity back to the sequencer
 	m_ie->I_LinkEntity( m_ownerID, this, m_taskManager );
@@ -2397,12 +2397,12 @@ int	CSequencer::Load( void )
 	int			numSequences, seqID, taskID, numTasks;
 
 	//Get the number of sequences to read
-	m_ie->I_ReadSaveData( 'SQR#', &numSequences, sizeof( numSequences ), NULL );
+	m_ie->I_ReadSaveData( INT_ID('S','Q','R','#'), &numSequences, sizeof( numSequences ), NULL );
 
 	//Read in all the sequences
 	for ( i = 0; i < numSequences; i++ )
 	{
-		m_ie->I_ReadSaveData( 'SQRI', &seqID, sizeof( seqID ), NULL );
+		m_ie->I_ReadSaveData( INT_ID('S','Q','R','I'), &seqID, sizeof( seqID ), NULL );
 
 		seq = m_owner->GetSequence( seqID );
 
@@ -2419,16 +2419,16 @@ int	CSequencer::Load( void )
 	m_taskManager->Load();
 
 	//Get the number of tasks in the map
-	m_ie->I_ReadSaveData( 'SQT#', &numTasks, sizeof( numTasks ), NULL );
+	m_ie->I_ReadSaveData( INT_ID('S','Q','T','#'), &numTasks, sizeof( numTasks ), NULL );
 
 	//Read in, and reassociate the tasks to the sequences
 	for ( i = 0; i < numTasks; i++ )
 	{
 		//Read in the task's ID
-		m_ie->I_ReadSaveData( 'STID', &taskID, sizeof( taskID ), NULL );
+		m_ie->I_ReadSaveData( INT_ID('S','T','I','D'), &taskID, sizeof( taskID ), NULL );
 		
 		//Read in the sequence's ID
-		m_ie->I_ReadSaveData( 'SSID', &seqID, sizeof( seqID ), NULL );
+		m_ie->I_ReadSaveData( INT_ID('S','S','I','D'), &seqID, sizeof( seqID ), NULL );
 
 		taskGroup = m_taskManager->GetTaskGroup( taskID );
 
@@ -2445,15 +2445,15 @@ int	CSequencer::Load( void )
 	int	curGroupID;
 
 	//Get the current task group
-	m_ie->I_ReadSaveData( 'SQCT', &curGroupID, sizeof( curGroupID ), NULL );
+	m_ie->I_ReadSaveData( INT_ID('S','Q','C','T'), &curGroupID, sizeof( curGroupID ), NULL );
 
 	m_curGroup = ( curGroupID == -1 ) ? NULL : m_taskManager->GetTaskGroup( curGroupID );
 
 	//Get the number of commands
-	m_ie->I_ReadSaveData( 'SQ#C', &m_numCommands, sizeof( m_numCommands ), NULL );
+	m_ie->I_ReadSaveData( INT_ID('S','Q','#','C'), &m_numCommands, sizeof( m_numCommands ), NULL );
 
 	//Get the current sequence
-	m_ie->I_ReadSaveData( 'SQCS', &seqID, sizeof( seqID ), NULL );
+	m_ie->I_ReadSaveData( INT_ID('S','Q','C','S'), &seqID, sizeof( seqID ), NULL );
 
 	m_curSequence = ( seqID != -1 ) ? m_owner->GetSequence( seqID ) : NULL;
 

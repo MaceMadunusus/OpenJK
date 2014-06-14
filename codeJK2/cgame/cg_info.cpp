@@ -1,9 +1,24 @@
-// this line must stay at top so the whole PCH thing works...
-#include "cg_headers.h"
+/*
+This file is part of Jedi Knight 2.
 
-//#include "cg_local.h"
+    Jedi Knight 2 is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Knight 2 is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Knight 2.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
+#include "cg_local.h"
 #include "cg_media.h"
-#include "..\game\objectives.h"
+#include "../game/objectives.h"
 #include "strip_objectives.h"
 
 static const int missionYpos = 79;
@@ -42,18 +57,7 @@ static void MissionPrint_Line(const int color, const int objectIndex, int &missi
 
 	int iYPixelsPerLine = cgi_R_Font_HeightPixels(cgs.media.qhFontMedium, 1.0f) * (cgi_Language_IsAsian() ? 1.2f : 1.0f );
 
-#ifndef __NO_JKA
-	if( gi.Cvar_VariableIntegerValue("com_demo") )
-	{
-		cgi_SP_GetStringTextString( va("OBJECTIVES_DEMO_%s",objectiveTable[objectIndex].name) , finalText, sizeof(finalText) );
-	}
-	else
-	{
-		cgi_SP_GetStringTextString( va("OBJECTIVES_%s",objectiveTable[objectIndex].name) , finalText, sizeof(finalText) );
-	}
-#else
 	cgi_SP_GetStringText( PACKAGE_OBJECTIVES<<8|objectIndex , finalText, sizeof(finalText) );
-#endif
 
 	pixelLen = cgi_R_Font_StrLenPixels(finalText, cgs.media.qhFontMedium, 1.0f);
 
@@ -90,7 +94,7 @@ static void MissionPrint_Line(const int color, const int objectIndex, int &missi
 		char holdText2[2];
 		pixelLen = 0;
 		charLen = 0;
-		holdText2[1] = NULL;
+		holdText2[1] = '\0';
 		strBegin = str;
 
 		while( *str ) 
@@ -116,7 +120,7 @@ static void MissionPrint_Line(const int color, const int objectIndex, int &missi
 				}
 
 				Q_strncpyz( holdText, strBegin, charLen);
-				holdText[charLen] = NULL;
+				holdText[charLen] = '\0';
 				strBegin = str;
 				pixelLen = 0;
 				charLen = 1;
@@ -126,7 +130,7 @@ static void MissionPrint_Line(const int color, const int objectIndex, int &missi
 				CG_DrawProportionalString(108, y, holdText, CG_SMALLFONT, colorTable[color] );
 				++missionYcnt;
 			} 
-			else if (*(str+1) == NULL)
+			else if (*(str+1) == '\0')
 			{
 				++charLen;
 
@@ -383,20 +387,20 @@ void CG_DrawInformation( void ) {
 	const qhandle_t	levelshot = cgi_R_RegisterShaderNoMip( va( "levelshots/%s", s ) );	
 
 	extern SavedGameJustLoaded_e g_eSavedGameJustLoaded;	// hack! (hey, it's the last week of coding, ok?
-	if ( !levelshot || g_eSavedGameJustLoaded == eFULL ) 
+	/*if ( !levelshot || g_eSavedGameJustLoaded == eFULL ) 
 	{
 		// keep whatever's in the screen buffer so far (either the last ingame rendered-image (eg for maptransition)
 		//	or the screenshot built-in to a loaded save game...
 		//
 		cgi_R_DrawScreenShot( 0, 480, 640, -480 );
-	} else {
+	} else*/ {
 		// put up the pre-defined levelshot for this map...
 		//
 		cgi_R_SetColor( NULL );
 		CG_DrawPic( 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, levelshot );
 	}
 
-	if ( g_eSavedGameJustLoaded != eFULL && (!strcmp(s,"kejim_post") || !strcmp(s,"demo")) )//special case for first map!
+	if ( g_eSavedGameJustLoaded != eFULL && !strcmp(s,"kejim_post") )//special case for first map!
 	{
 		char	text[1024]={0};
 		cgi_SP_GetStringTextString( "INGAME_ALONGTIME", text, sizeof(text) );

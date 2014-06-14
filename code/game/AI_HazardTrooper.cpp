@@ -1,3 +1,21 @@
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 ////////////////////////////////////////////////////////////////////////////////////////
 // RAVEN SOFTWARE - STAR WARS: JK II
 //  (c) 2002 Activision
@@ -10,28 +28,26 @@
 //
 //
 //
-// leave this line at the top of all AI_xxxx.cpp files for PCH reasons...
-////////////////////////////////////////////////////////////////////////////////////////
-#include "g_headers.h"
 
 ////////////////////////////////////////////////////////////////////////////////////////
 // Includes
 ////////////////////////////////////////////////////////////////////////////////////////
 #include "b_local.h"
+#include "g_navigator.h"
 #if !defined(RAVL_VEC_INC)
-	#include "..\Ravl\CVec.h"
+	#include "../Ravl/CVec.h"
 #endif
 #if !defined(RATL_ARRAY_VS_INC)
-	#include "..\Ratl\array_vs.h"
+	#include "../Ratl/array_vs.h"
 #endif
 #if !defined(RATL_VECTOR_VS_INC)
-	#include "..\Ratl\vector_vs.h"
+	#include "../Ratl/vector_vs.h"
 #endif
 #if !defined(RATL_HANDLE_POOL_VS_INC)
-	#include "..\Ratl\handle_pool_vs.h"
+	#include "../Ratl/handle_pool_vs.h"
 #endif
 #if !defined(RUFL_HSTRING_INC)
-	#include "..\Rufl\hstring.h"
+	#include "../Rufl/hstring.h"
 #endif
 
 
@@ -65,6 +81,7 @@ enum
 	SPEECH_PUSHED
 };
 extern void G_AddVoiceEvent( gentity_t *self, int event, int speakDebounceTime );
+extern void CG_DrawEdge( vec3_t start, vec3_t end, int type );
 static void HT_Speech( gentity_t *self, int speechType, float failChance )
 {
 	if ( random() < failChance )
@@ -176,7 +193,6 @@ class	CTroop
 
 	float			mFormSpacingFwd;
 	float			mFormSpacingRight;
-	float			mSurroundFanAngle;
 
 public:
 	bool	Empty()					{return mActors.empty();}
@@ -279,7 +295,7 @@ public:
 		assert(actor->NPC->troop==mTroopHandle);
 		int		bestNewLeader=-1;
 		int		numEnts = mActors.size();
-		bool	found = false;
+		//bool	found = false;
 		mTroopReform = true;
 
 		// Find The Actor
@@ -288,7 +304,7 @@ public:
 		{
 			if (mActors[i]==actor)
 			{
-				found = true;
+				//found = true;
 				mActors.erase_swap(i);
 				numEnts --;
 				if (i==0 && !mActors.empty())
@@ -307,19 +323,9 @@ public:
 			MakeActorLeader(bestNewLeader);
 		}
 
-		assert(found);
+		//assert(found);
 		actor->NPC->troop = 0;
 	}
-
-	
-
-
-
-
-
-
-
-
 
 private:
 	////////////////////////////////////////////////////////////////////////////////////
@@ -426,8 +432,6 @@ private:
 		}
 		return ClampScale(Scale);
 	}
-
-
 
 	////////////////////////////////////////////////////////////////////////////////////
 	// Scan For Enemies
@@ -697,8 +701,6 @@ private:
 
 // PHASE II - COMPUTE THE NEW FORMATION HEAD, FORWARD, AND RIGHT VECTORS
 //=======================================================================
-		CVec3	PreviousFwd = mFormFwd;
-
 		mFormHead	= leader->currentOrigin;
 		mFormFwd	= (NAV::HasPath(leader))?(NAV::NextPosition(leader)):(mTargetLastKnownPosition);
 		mFormFwd	-= mFormHead;
@@ -1435,10 +1437,6 @@ void		Trooper_Think(gentity_t* actor)
 			//--------
 			if (traceTgt==target->s.number)
 			{
-				if (actor->s.weapon==WP_BLASTER)
-				{
-					ucmd.buttons	|= BUTTON_ALT_ATTACK;
-				}
 				WeaponThink(qtrue);
 			}
 			else if (!inSmackAway)

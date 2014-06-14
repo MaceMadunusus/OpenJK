@@ -1,3 +1,21 @@
+/*
+This file is part of Jedi Knight 2.
+
+    Jedi Knight 2 is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Knight 2 is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Knight 2.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 #ifndef __G_LOCAL_H__
 #define __G_LOCAL_H__
 // g_local.h -- local definitions for game module
@@ -6,10 +24,11 @@
 // short, server-visible gclient_t and gentity_t structures,
 // because we define the full size ones in this file
 #define	GAME_INCLUDE
-#include "../ui/gameinfo.h"
+#include "../../code/ui/gameinfo.h"
 #include "g_shared.h"
 #include "anims.h"
 #include "dmstates.h"
+#include "time.h"
 
 //==================================================================
 
@@ -58,7 +77,7 @@
 #define	VALIDATEB( a )	if ( a == NULL ) {	assert(0);	return qfalse;	}
 #define VALIDATEP( a )	if ( a == NULL ) {	assert(0);	return NULL;	}
 
-#define VALIDSTRING( a )	( ( a != NULL ) && ( a[0] != NULL ) )
+#define VALIDSTRING( a )	( ( a != NULL ) && ( a[0] != '\0' ) )
 
 //Interest points
 
@@ -392,11 +411,6 @@ void FireWeapon( gentity_t *ent, qboolean alt_fire );
 void MoveClientToIntermission (gentity_t *client);
 void G_SetStats (gentity_t *ent);
 void DeathmatchScoreboardMessage (gentity_t *client);
-
-//
-// g_cmds.c
-//
-static void G_SayTo( gentity_t *ent, gentity_t *other, int mode, int color, const char *name, const char *message );
 
 //
 // g_pweapon.c

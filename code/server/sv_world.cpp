@@ -1,3 +1,21 @@
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 // world.c -- world query functions
 
 // leave this as first line for PCH reasons...
@@ -11,13 +29,13 @@ Ghoul2 Insert Start
 */
 
 #if !defined(GHOUL2_SHARED_H_INC)
-	#include "..\game\ghoul2_shared.h"	//for CGhoul2Info_v
+	#include "../game/ghoul2_shared.h"	//for CGhoul2Info_v
 #endif
 #if !defined(G2_H_INC)
-	#include "..\ghoul2\G2.h"
+	#include "../ghoul2/G2.h"
 #endif
 #if !defined (MINIHEAP_H_INC)
-	#include "../qcommon/miniheap.h"
+	#include "../qcommon/MiniHeap.h"
 #endif
 
 #ifdef _DEBUG
@@ -26,10 +44,6 @@ Ghoul2 Insert Start
 /*
 Ghoul2 Insert End
 */
-#if MEM_DEBUG
-#include "..\smartheap\heapagnt.h"
-#define SV_TRACE_PROFILE (0)
-#endif
 
 #if 0 //G2_SUPERSIZEDBBOX is not being used
 static const float superSizedAdd=64.0f;
@@ -376,9 +390,6 @@ SV_AreaEntities_r
 void SV_AreaEntities_r( worldSector_t *node, areaParms_t *ap ) {
 	svEntity_t	*check, *next;
 	gentity_t	*gcheck;
-	int			count;
-
-	count = 0;
 
 	for ( check = node->entities  ; check ; check = next ) {
 		next = check->nextEntityInWorldSector;
@@ -430,15 +441,6 @@ int SV_AreaEntities( const vec3_t mins, const vec3_t maxs, gentity_t **elist, in
 	ap.count = 0;
 	ap.maxcount = maxcount;
 
-#if SV_TRACE_PROFILE
-#if MEM_DEBUG
-	{
-		int old=dbgMemSetCheckpoint(2003);
-		malloc(1);
-		dbgMemSetCheckpoint(old);
-	}
-#endif
-#endif
 	SV_AreaEntities_r( sv_worldSectors, &ap );
 
 	return ap.count;
@@ -767,14 +769,14 @@ Ghoul2 Insert Start
 					world_angles[YAW] =  touch->client->legsYaw;
 					world_angles[ROLL] =  0;
 
-					G2API_CollisionDetect(clip->trace.G2CollisionMap, touch->ghoul2,
+					re.G2API_CollisionDetect(clip->trace.G2CollisionMap, touch->ghoul2,
 							world_angles, touch->client->origin, sv.time, touch->s.number, clip->start, clip->end, touch->s.modelScale, G2VertSpaceServer, clip->eG2TraceType, clip->useLod,radius);
 				}
 				// no, so use the normal entity state
 				else
 				{
 					//use the correct origin and angles!  is this right now?
-					G2API_CollisionDetect(clip->trace.G2CollisionMap, touch->ghoul2,
+					re.G2API_CollisionDetect(clip->trace.G2CollisionMap, touch->ghoul2,
 						touch->currentAngles, touch->currentOrigin, sv.time, touch->s.number, clip->start, clip->end, touch->s.modelScale, G2VertSpaceServer, clip->eG2TraceType, clip->useLod,radius);
 				}
 
@@ -834,18 +836,8 @@ void SV_Trace( trace_t *results, const vec3_t start, const vec3_t mins, const ve
 Ghoul2 Insert End
 */
 #ifdef _DEBUG
-	assert( !_isnan(start[0])&&!_isnan(start[1])&&!_isnan(start[2])&&!_isnan(end[0])&&!_isnan(end[1])&&!_isnan(end[2]));
+	assert( !Q_isnan(start[0])&&!Q_isnan(start[1])&&!Q_isnan(start[2])&&!Q_isnan(end[0])&&!Q_isnan(end[1])&&!Q_isnan(end[2]));
 #endif// _DEBUG
-
-#if SV_TRACE_PROFILE
-#if MEM_DEBUG
-	{
-		int old=dbgMemSetCheckpoint(2002);
-		malloc(1);
-		dbgMemSetCheckpoint(old);
-	}
-#endif
-#endif
 
 	moveclip_t	clip;
 	int			i;
@@ -960,24 +952,7 @@ int SV_PointContents( const vec3_t p, int passEntityNum ) {
 	gentity_t		*touch[MAX_GENTITIES], *hit;
 	int			i, num;
 	int			contents, c2;
-//	int			startMS, endMS;
 	clipHandle_t	clipHandle;
-	const float		*angles;
-
-#if MEM_DEBUG
-#if SV_TRACE_PROFILE
-	{
-		int old=dbgMemSetCheckpoint(2001);
-		malloc(1);
-		dbgMemSetCheckpoint(old);
-	}
-#endif
-#endif
-
-	/*
-	startMS = Sys_Milliseconds ();
-	numTraces++;
-	*/
 
 	// get base contents from world
 	contents = CM_PointContents( p, 0 );
@@ -992,20 +967,12 @@ int SV_PointContents( const vec3_t p, int passEntityNum ) {
 		}
 		// might intersect, so do an exact clip
 		clipHandle = SV_ClipHandleForEntity( hit );
-		angles = hit->s.angles;
-		if ( !hit->bmodel ) {
-			angles = vec3_origin;	// boxes don't rotate
-		}
 
 		c2 = CM_TransformedPointContents (p, clipHandle, hit->s.origin, hit->s.angles);
 
 		contents |= c2;
 	}
 
-	/*
-	endMS = Sys_Milliseconds ();
-	timeInTrace += endMS - startMS;
-	*/
 	return contents;
 }
 

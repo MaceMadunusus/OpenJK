@@ -1,10 +1,27 @@
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 // cg_snapshot.c -- things that happen on snapshot transition,
 // not necessarily every single frame
 
 // this line must stay at top so the whole PCH thing works...
 #include "cg_headers.h"
 
-//#include "cg_local.h"
 
 /*
 ==================
@@ -315,7 +332,6 @@ of an interpolating one)
 void CG_ProcessSnapshots( void ) {
 	snapshot_t		*snap;
 	int				n;
-	qboolean		newSnapshots;
 
 	// see what the latest snapshot the client system has is
 	cgi_GetCurrentSnapshotNumber( &n, &cg.latestSnapshotTime );
@@ -325,9 +341,6 @@ void CG_ProcessSnapshots( void ) {
 			CG_Error( "CG_ProcessSnapshots: n < cg.latestSnapshotNum" );
 		}
 		cg.latestSnapshotNum = n;
-		newSnapshots = qtrue;
-	} else {
-		newSnapshots = qfalse;
 	}
 
 	// If we have yet to receive a snapshot, check for it.

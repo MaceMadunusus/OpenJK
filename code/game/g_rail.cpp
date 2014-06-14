@@ -1,3 +1,21 @@
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 ////////////////////////////////////////////////////////////////////////////////////////
 // RAVEN SOFTWARE - STAR WARS: JK II
 //  (c) 2002 Activision
@@ -9,14 +27,15 @@
 // upon their targets and recycled in random positions and order
 //
 ////////////////////////////////////////////////////////////////////////////////////////
-#include "g_headers.h"
-
-
+#include "../qcommon/q_shared.h"
+#include "bg_public.h"
+#include "../cgame/cg_local.h"
+#include "g_functions.h"
 ////////////////////////////////////////////////////////////////////////////////////////
 // Externs & Fwd Decl.
 ////////////////////////////////////////////////////////////////////////////////////////
-//extern cvar_t*		g_nav1;
 extern void		G_SoundAtSpot( vec3_t org, int soundIndex, qboolean broadcast );
+extern void CG_DrawEdge( vec3_t start, vec3_t end, int type );
 
 class	CRailTrack;
 class	CRailLane;
@@ -28,26 +47,22 @@ class	CRailMover;
 ////////////////////////////////////////////////////////////////////////////////////////
 #include "b_local.h"
 #if !defined(RATL_ARRAY_VS_INC)
-	#include "..\Ratl\array_vs.h"
+	#include "../Ratl/array_vs.h"
 #endif
 #if !defined(RATL_VECTOR_VS_INC)
-	#include "..\Ratl\vector_vs.h"
+	#include "../Ratl/vector_vs.h"
 #endif
 #if !defined(RAVL_VEC_INC)
-	#include "..\Ravl\CVec.h"
+	#include "../Ravl/CVec.h"
 #endif
 #if !defined(RUFL_HSTRING_INC)
-	#include "..\Rufl\hstring.h"
+	#include "../Rufl/hstring.h"
 #endif
 #if !defined(RATL_GRID_VS_INC)
-	#include "..\Ratl\grid_vs.h"
+	#include "../Ratl/grid_vs.h"
 #endif
 #if !defined(RATL_POOL_VS_INC)
-	#include "..\Ratl\pool_vs.h"
-#endif
-
-#ifdef _XBOX
-using dllNamespace::hstring;
+	#include "../Ratl/pool_vs.h"
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////////////

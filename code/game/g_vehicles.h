@@ -1,7 +1,25 @@
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 #ifndef __G_VEHICLES_H
 #define __G_VEHICLES_H
 
-#include "q_shared.h"
+#include "../qcommon/q_shared.h"
 #include "g_public.h"			   
 
 typedef enum
@@ -63,7 +81,7 @@ typedef struct
 //NOTE: this MUST stay up to date with the number of variables in the vehFields table!!!
 #define NUM_VWEAP_PARMS	25
 
-#define	VWFOFS(x) ((int)&(((vehWeaponInfo_t *)0)->x))
+#define	VWFOFS(x) offsetof(vehWeaponInfo_t, x)
 
 #define MAX_VEH_WEAPONS	16	//sigh... no more than 16 different vehicle weapons
 #define VEH_WEAPON_BASE	0
@@ -352,7 +370,7 @@ typedef struct
 	bool (*Inhabited)( Vehicle_t *pVeh );
 } vehicleInfo_t;
 
-#define	VFOFS(x) ((int)&(((vehicleInfo_t *)0)->x))
+#define	VFOFS(x) offsetof(vehicleInfo_t, x)
 
 #define MAX_VEHICLES	16	//sigh... no more than 64 individual vehicles
 extern vehicleInfo_t g_vehicleInfo[MAX_VEHICLES];
@@ -431,12 +449,6 @@ enum
 	VEH_ARMORGONE = 0x00004000
 };
 //externed functions
-//extern void G_DriveVehicle( gentity_t *ent, gentity_t *vehEnt, char *vehicleName );
-/*extern void G_VehicleStartExplosionDelay( gentity_t *self );
-extern void VehicleExplosionDelay( gentity_t *self );
-extern void G_VehicleRegisterAssets( int vehicleIndex );
-extern void G_DriveATST( gentity_t *ent, gentity_t *atst );
-extern void G_VehicleInitialize( gentity_t *vehEnt );*/
 extern void G_VehicleSpawn( gentity_t *self );
 
 // A vehicle weapon muzzle.

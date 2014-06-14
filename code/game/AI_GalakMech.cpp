@@ -1,3 +1,21 @@
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 ////////////////////////////////////////////////////////////////////////////////////////
 // RAVEN SOFTWARE - STAR WARS: JK III
 //  (c) 2002 Activision
@@ -5,8 +23,6 @@
 // April 3, 2003 - This file has been commandeered for use by AI vehicle pilots.
 //
 ////////////////////////////////////////////////////////////////////////////////////////
-#include "g_headers.h"
-
 
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -15,9 +31,10 @@
 #include "b_local.h"
 #include "anims.h"
 #include "g_navigator.h"
-#include "g_Vehicles.h"
+#include "g_vehicles.h"
+#include "g_functions.h"
 #if !defined(RATL_VECTOR_VS_INC)
-	#include "..\Ratl\vector_vs.h"
+	#include "../Ratl/vector_vs.h"
 #endif
 
 
@@ -42,6 +59,7 @@
 ////////////////////////////////////////////////////////////////////////////////////////
 extern Vehicle_t *G_IsRidingVehicle( gentity_t *ent );
 extern void G_SoundAtSpot( vec3_t org, int soundIndex, qboolean broadcast );
+extern void CG_DrawEdge( vec3_t start, vec3_t end, int type );
 
 
 
@@ -248,7 +266,7 @@ bool	Pilot_MasterUpdate()
 		//---------------------------------
 		if (NPCInfo->greetEnt)
 		{
-			ucmd.upmove = 128.0f;
+			ucmd.upmove = 127;
 
 			if (NPCInfo->greetEnt && NPCInfo->greetEnt->m_pVehicle && level.time<NPCInfo->confusionTime)
 			{

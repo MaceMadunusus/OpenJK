@@ -1,5 +1,22 @@
+/*
+This file is part of Jedi Academy.
 
-#include "../game/q_shared.h"
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
+#include "q_shared.h"
 #include "qcommon.h"
 #include "../server/server.h"
 
@@ -311,7 +328,8 @@ int MSG_ReadLong( msg_t *msg ) {
 }
 
 char *MSG_ReadString( msg_t *msg ) {
-	static char	string[MAX_STRING_CHARS];
+	static const int STRING_SIZE = MAX_STRING_CHARS;
+	static char	string[STRING_SIZE];
 	int		l,c;
 	
 	MSG_ReadByteAlign( msg );
@@ -328,7 +346,7 @@ char *MSG_ReadString( msg_t *msg ) {
 
 		string[l] = c;
 		l++;
-	} while (l < sizeof(string)-1);
+	} while (l < STRING_SIZE - 1);
 	
 	string[l] = 0;
 	
@@ -336,7 +354,8 @@ char *MSG_ReadString( msg_t *msg ) {
 }
 
 char *MSG_ReadStringLine( msg_t *msg ) {
-	static char	string[MAX_STRING_CHARS];
+	static const int STRING_SIZE = MAX_STRING_CHARS;
+	static char	string[STRING_SIZE];
 	int		l,c;
 
 	MSG_ReadByteAlign( msg );
@@ -352,7 +371,7 @@ char *MSG_ReadStringLine( msg_t *msg ) {
 		}
 		string[l] = c;
 		l++;
-	} while (l < sizeof(string)-1);
+	} while (l < STRING_SIZE - 1);
 	
 	string[l] = 0;
 	
@@ -399,20 +418,22 @@ int	MSG_ReadDelta( msg_t *msg, int oldV, int bits ) {
 }
 
 void MSG_WriteDeltaFloat( msg_t *msg, float oldV, float newV ) {
+	byteAlias_t fi;
 	if ( oldV == newV ) {
 		MSG_WriteBits( msg, 0, 1 );
 		return;
 	}
+	fi.f = newV;
 	MSG_WriteBits( msg, 1, 1 );
-	MSG_WriteBits( msg, *(int *)&newV, 32 );
+	MSG_WriteBits( msg, fi.i, 32 );
 }
 
 float MSG_ReadDeltaFloat( msg_t *msg, float oldV ) {
 	if ( MSG_ReadBits( msg, 1 ) ) {
-		float	newV;
+		byteAlias_t fi;
 
-		*(int *)&newV = MSG_ReadBits( msg, 32 );
-		return newV;
+		fi.i = MSG_ReadBits( msg, 32 );
+		return fi.f;
 	}
 	return oldV;
 }
@@ -482,13 +503,13 @@ entityState_t communication
 */
 
 typedef struct {
-	char	*name;
+	const char	*name;
 	int		offset;
 	int		bits;		// 0 = float
 } netField_t;
 
 // using the stringizing operator to save typing...
-#define	NETF(x) #x,(int)&((entityState_t*)0)->x
+#define	NETF(x) #x,offsetof(entityState_t, x)
 
 #if 0	// Removed by BTO (VV)
 const netField_t	entityStateFields[] = 
@@ -922,7 +943,7 @@ plyer_state_t communication
 */
 
 // using the stringizing operator to save typing...
-#define	PSF(x) #x,(int)&((playerState_t*)0)->x
+#define	PSF(x) #x,offsetof(playerState_t, x)
 
 static const netField_t	playerStateFields[] = 
 {
@@ -971,13 +992,15 @@ static const netField_t	playerStateFields[] =
 { PSF(damageYaw), 8 },
 { PSF(damagePitch), -8 },
 { PSF(damageCount), 8 },
+#ifdef JK2_MODE
 { PSF(saberColor), 8 },
-#ifndef __NO_JK2
 { PSF(saberActive), 8 },
 { PSF(saberLength), 32 },
 { PSF(saberLengthMax), 32 },
+#endif
 { PSF(forcePowersActive), 32},
 { PSF(saberInFlight), 8 },
+#ifdef JK2_MODE
 { PSF(vehicleModel), 32 },
 #endif
 
@@ -991,6 +1014,7 @@ static const netField_t	playerStateFields[] =
 { PSF(serverViewOrg[0]), 0 },
 { PSF(serverViewOrg[1]), 0 },
 { PSF(serverViewOrg[2]), 0 },
+{ PSF(forceRageRecoveryTime), 32 },
 };
 
 /*

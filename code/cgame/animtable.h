@@ -1,11 +1,26 @@
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 // special file included only by cg_players.cpp & ui_players.cpp
 //
 // moved it from the original header file for PCH reasons...
 //
 
-#if defined(_XBOX) && !defined(_JK2EXE) && !defined(_UI)	// Linker only wants one copy
-extern stringID_table_t animTable[MAX_ANIMATIONS+1];
-#else
 stringID_table_t animTable [MAX_ANIMATIONS+1] =
 {
 	//=================================================
@@ -1584,6 +1599,7 @@ stringID_table_t animTable [MAX_ANIMATIONS+1] =
 
 	ENUM2STRING(BOTH_STAND_TO_KNEEL),
 	ENUM2STRING(BOTH_KNEEL_TO_STAND),
+	ENUM2STRING(BOTH_KNEELATTACK),
 
 	ENUM2STRING(BOTH_TUSKENATTACK1),
 	ENUM2STRING(BOTH_TUSKENATTACK2),
@@ -1787,6 +1803,5 @@ stringID_table_t animTable [MAX_ANIMATIONS+1] =
 	ENUM2STRING(BOTH_CIN_50),		//# Level specific cinematic
 										
 	//must be terminated
-	NULL,-1
+	{ NULL,-1 }
 };
-#endif	// _XBOX / _UI

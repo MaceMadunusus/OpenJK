@@ -1,5 +1,24 @@
-// leave this line at the top for all g_xxxx.cpp files...
-#include "g_headers.h"
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
+#include "../qcommon/q_shared.h"
+#include "../cgame/cg_local.h"
+#include "b_local.h"
 
 extern qboolean G_EntIsUnlockedDoor( int entityNum );
 extern qboolean FlyingCreature( gentity_t *ent );
@@ -18,7 +37,6 @@ qboolean NAV_HitNavGoal( vec3_t point, vec3_t mins, vec3_t maxs, vec3_t dest, in
 
 	if ( radius )
 	{
-		radius;
 		//NOTE:  This needs to do a DistanceSquared on navgoals that had
 		//			a radius manually set! We can't do the smaller navgoals against
 		//			walls to get around this because player-sized traces to them

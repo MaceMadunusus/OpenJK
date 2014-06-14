@@ -1,3 +1,21 @@
+/*
+This file is part of Jedi Knight 2.
+
+    Jedi Knight 2 is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Knight 2 is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Knight 2.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 // leave this line at the top for all g_xxxx.cpp files...
 #include "g_headers.h"
 
@@ -14,8 +32,10 @@
 #include "g_icarus.h"
 #include "objectives.h"
 #include "../cgame/cg_local.h"	// yeah I know this is naughty, but we're shipping soon...
+#include "time.h"
 
 extern CNavigator		navigator;
+
 static int				navCalcPathTime = 0;
 int		eventClearTime = 0;
 
@@ -36,16 +56,16 @@ void ClearAllInUse(void)
 
 void SetInUse(gentity_t *ent)
 {
-	assert(((unsigned int)ent)>=(unsigned int)g_entities);
-	assert(((unsigned int)ent)<=(unsigned int)(g_entities+MAX_GENTITIES-1));
+	assert(((uintptr_t)ent)>=(uintptr_t)g_entities);
+	assert(((uintptr_t)ent)<=(uintptr_t)(g_entities+MAX_GENTITIES-1));
 	unsigned int entNum=ent-g_entities;
 	g_entityInUseBits[entNum/32]|=((unsigned int)1)<<(entNum&0x1f);
 }
 
 void ClearInUse(gentity_t *ent)
 {
-	assert(((unsigned int)ent)>=(unsigned int)g_entities);
-	assert(((unsigned int)ent)<=(unsigned int)(g_entities+MAX_GENTITIES-1));
+	assert(((uintptr_t)ent)>=(uintptr_t)g_entities);
+	assert(((uintptr_t)ent)<=(uintptr_t)(g_entities+MAX_GENTITIES-1));
 	unsigned int entNum=ent-g_entities;
 	g_entityInUseBits[entNum/32]&=~(((unsigned int)1)<<(entNum&0x1f));
 }
@@ -59,20 +79,20 @@ qboolean PInUse(unsigned int entNum)
 
 qboolean PInUse2(gentity_t *ent)
 {
-	assert(((unsigned int)ent)>=(unsigned int)g_entities);
-	assert(((unsigned int)ent)<=(unsigned int)(g_entities+MAX_GENTITIES-1));
+	assert(((uintptr_t)ent)>=(uintptr_t)g_entities);
+	assert(((uintptr_t)ent)<=(uintptr_t)(g_entities+MAX_GENTITIES-1));
 	unsigned int entNum=ent-g_entities;
 	return((g_entityInUseBits[entNum/32]&(((unsigned int)1)<<(entNum&0x1f)))!=0);
 }
 
 void WriteInUseBits(void)
 {
-	gi.AppendToSaveGame('INUS', &g_entityInUseBits, sizeof(g_entityInUseBits) );
+	gi.AppendToSaveGame(INT_ID('I','N','U','S'), &g_entityInUseBits, sizeof(g_entityInUseBits) );
 }
 
 void ReadInUseBits(void)
 {
-	gi.ReadFromSaveGame('INUS', &g_entityInUseBits, sizeof(g_entityInUseBits), NULL);
+	gi.ReadFromSaveGame(INT_ID('I','N','U','S'), &g_entityInUseBits, sizeof(g_entityInUseBits), NULL);
 	// This is only temporary. Once I have converted all the ent->inuse refs,
 	// it won;t be needed -MW.
 	for(int i=0;i<MAX_GENTITIES;i++)
@@ -377,6 +397,8 @@ static void G_DynamicMusicUpdate( void )
 				case AEL_MINOR:
 					//distraction = qtrue;
 					break;
+				default:
+					break;
 				}
 			}
 		}
@@ -531,9 +553,9 @@ void G_InitCvars( void ) {
 
 	// change anytime vars
 	g_speed = gi.cvar( "g_speed", "250", CVAR_CHEAT );
-	g_gravity = gi.cvar( "g_gravity", "800", CVAR_USERINFO|CVAR_ROM );	//using userinfo as savegame flag
-	g_sex = gi.cvar ("sex", "male", CVAR_USERINFO | CVAR_ARCHIVE );
-	g_spskill = gi.cvar ("g_spskill", "0", CVAR_ARCHIVE | CVAR_USERINFO);	//using userinfo as savegame flag
+	g_gravity = gi.cvar( "g_gravity", "800", CVAR_SAVEGAME|CVAR_ROM );
+	g_sex = gi.cvar ("sex", "male", CVAR_USERINFO | CVAR_ARCHIVE|CVAR_SAVEGAME|CVAR_NORESTART );
+	g_spskill = gi.cvar ("g_spskill", "0", CVAR_ARCHIVE | CVAR_SAVEGAME|CVAR_NORESTART);
 	g_knockback = gi.cvar( "g_knockback", "1000", CVAR_CHEAT );
 	g_dismemberment = gi.cvar ( "g_dismemberment", "3", CVAR_ARCHIVE );//0 = none, 1 = arms and hands, 2 = legs, 3 = waist and head, 4 = mega dismemberment
 	g_dismemberProbabilities = gi.cvar ( "g_dismemberProbabilities", "1", CVAR_ARCHIVE );//0 = ignore probabilities, 1 = use probabilities
@@ -580,8 +602,6 @@ extern int fatalErrors;
 #endif
 void InitGame(  const char *mapname, const char *spawntarget, int checkSum, const char *entities, int levelTime, int randomSeed, int globalTime, SavedGameJustLoaded_e eSavedGameJustLoaded, qboolean qbLoadTransition )
 {
-	int		i;
-
 	giMapChecksum = checkSum;
 	g_eSavedGameJustLoaded = eSavedGameJustLoaded;
 	g_qbLoadTransition = qbLoadTransition;
@@ -620,6 +640,7 @@ void InitGame(  const char *mapname, const char *spawntarget, int checkSum, cons
 	// initialize all clients for this game
 	level.maxclients = 1;
 	level.clients = (struct gclient_s *) G_Alloc( level.maxclients * sizeof(level.clients[0]) );
+	memset(level.clients, 0, level.maxclients * sizeof(level.clients[0]));
 
 	// set client fields on player
 	g_entities[0].client = level.clients;
@@ -664,14 +685,6 @@ void InitGame(  const char *mapname, const char *spawntarget, int checkSum, cons
 //	SaveRegisteredItems();
 
 	gi.Printf ("-----------------------------------\n");
-
-	//randomize the rand functions
-	byte num_calls = (byte)timeGetTime();
-
-	for(i = 0; i < (int)num_calls; i++)
-	{
-		rand();
-	}
 
 	if ( navCalculatePaths )
 	{//not loaded - need to calc paths
@@ -755,7 +768,7 @@ and global variables
 =================
 */
 extern int PM_ValidateAnimRange( int startFrame, int endFrame, float animSpeed );
-game_export_t *GetGameAPI( game_import_t *import ) {
+extern "C" Q_EXPORT game_export_t* QDECL GetGameAPI( game_import_t *import ) {
 	gameinfo_import_t	gameinfo_import;
 
 	gi = *import;
@@ -801,14 +814,11 @@ void QDECL G_Error( const char *fmt, ... ) {
 	char		text[1024];
 
 	va_start (argptr, fmt);
-	vsprintf (text, fmt, argptr);
+	Q_vsnprintf (text, sizeof(text), fmt, argptr);
 	va_end (argptr);
 
 	gi.Error( ERR_DROP, "%s", text);
 }
-
-#ifndef GAME_HARD_LINKED
-// this is only here so the functions in q_shared.c and bg_*.c can link
 
 /*
 -------------------------
@@ -821,7 +831,7 @@ void Com_Error ( int level, const char *error, ... ) {
 	char		text[1024];
 
 	va_start (argptr, error);
-	vsprintf (text, error, argptr);
+	Q_vsnprintf (text, sizeof(text), error, argptr);
 	va_end (argptr);
 
 	gi.Error( level, "%s", text);
@@ -838,13 +848,11 @@ void Com_Printf( const char *msg, ... ) {
 	char		text[1024];
 
 	va_start (argptr, msg);
-	vsprintf (text, msg, argptr);
+	Q_vsnprintf (text, sizeof(text), msg, argptr);
 	va_end (argptr);
 
 	gi.Printf ("%s", text);
 }
-
-#endif
 
 /*
 ========================================================================
@@ -863,7 +871,7 @@ FUNCTIONS CALLED EVERY FRAME
 ========================================================================
 */
 
-void G_CheckTasksCompleted (gentity_t *ent) 
+static void G_CheckTasksCompleted (gentity_t *ent) 
 {
 	if ( Q3_TaskIDPending( ent, TID_CHAN_VOICE ) )
 	{
@@ -886,7 +894,7 @@ void G_CheckTasksCompleted (gentity_t *ent)
 	}
 }
 
-void G_CheckSpecialPersistentEvents( gentity_t *ent )
+static void G_CheckSpecialPersistentEvents( gentity_t *ent )
 {//special-case alerts that would be a pain in the ass to have the ent's think funcs generate
 	if ( ent == NULL )
 	{
@@ -1452,7 +1460,7 @@ void G_RunFrame( int levelTime ) {
 #ifndef FINAL_BUILD
 	if ( delayedShutDown != 0 && delayedShutDown < level.time )
 	{
-		G_Error( "Game Errors. Scroll up the console to read them.\n" );
+		G_Error( "Game Errors. Scroll up the console to read them." );
 	}
 #endif
 
@@ -1470,14 +1478,14 @@ extern qboolean player_locked;
 
 void G_LoadSave_WriteMiscData(void)
 { 
-	gi.AppendToSaveGame('LCKD', &player_locked, sizeof(player_locked));
+	gi.AppendToSaveGame(INT_ID('L','C','K','D'), &player_locked, sizeof(player_locked));
 }
 
 
 
 void G_LoadSave_ReadMiscData(void)
 {
-	gi.ReadFromSaveGame('LCKD', &player_locked, sizeof(player_locked), NULL);
+	gi.ReadFromSaveGame(INT_ID('L','C','K','D'), &player_locked, sizeof(player_locked), NULL);
 }
 
 

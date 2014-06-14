@@ -1,3 +1,21 @@
+/*
+This file is part of Jedi Knight 2.
+
+    Jedi Knight 2 is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Knight 2 is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Knight 2.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 //g_itemLoad.cpp
 //reads in ext_data\items.dat to bg_itemlist[]
 
@@ -38,7 +56,7 @@ static void IT_WorldModel (const char **holdBuf);
 
 typedef struct 
 {
-	char	*parmName;
+	const char	*parmName;
 	void	(*func)(const char **holdBuf);
 } itemParms_t;
 
@@ -47,16 +65,16 @@ typedef struct
 
 itemParms_t ItemParms[IT_PARM_MAX] = 
 {
-	"itemname",			IT_Name,
-	"classname",		IT_ClassName,
-	"count",			IT_Count,
-	"icon",				IT_Icon,
-	"min",				IT_Min,
-	"max",				IT_Max,
-	"pickupsound",		IT_PickupSound,
-	"tag",				IT_Tag,
-	"type",				IT_Type,
-	"worldmodel",		IT_WorldModel,
+	{ "itemname",			IT_Name },
+	{ "classname",			IT_ClassName },
+	{ "count",				IT_Count },
+	{ "icon",				IT_Icon },
+	{ "min",				IT_Min },
+	{ "max",				IT_Max },
+	{ "pickupsound",		IT_PickupSound },
+	{ "tag",				IT_Tag },
+	{ "type",				IT_Type },
+	{ "worldmodel",			IT_WorldModel },
 };
 
 static void IT_SetDefaults()
@@ -585,7 +603,6 @@ static void IT_PickupSound(const char **holdBuf)
 
 static void IT_ParseWeaponParms(const char **holdBuf)
 {
-	static int	weaponNum,ammoNum;
 	const char	*token;
 	int		i;
 
@@ -612,9 +629,8 @@ static void IT_ParseWeaponParms(const char **holdBuf)
 			continue;
 		}
 
-		gi.Printf("bad parameter in external weapon data '%s'\n", token);
+		Com_Printf("^3WARNING: bad parameter in external item data '%s'\n", token);
 		SkipRestOfLine(holdBuf);
-		
 	}
 }
 
@@ -634,11 +650,12 @@ static void IT_ParseParms(const char *buffer)
 
 		if ( !Q_stricmp( token, "{" ) ) 
 		{
-			token =token;
 			IT_ParseWeaponParms(&holdBuf);
 		}
 		 
 	}
+
+	COM_EndParseSession(  );
 
 //	--bg_numItems;
 

@@ -1,7 +1,25 @@
+/*
+This file is part of Jedi Knight 2.
+
+    Jedi Knight 2 is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Knight 2 is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Knight 2.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 #ifndef	__CG_LOCAL_H__
 #define	__CG_LOCAL_H__
 
-#include "../game/q_shared.h"
+#include "../../code/qcommon/q_shared.h"
 
 // define GAME_INCLUDE so that g_public.h does not define the
 // short, server-visible gclient_t and gentity_t structures,
@@ -565,6 +583,9 @@ extern	vmCvar_t		cg_drawGun;
 extern	vmCvar_t		cg_autoswitch;
 extern	vmCvar_t		cg_simpleItems;
 extern	vmCvar_t		cg_fov;
+extern	vmCvar_t		cg_fovAspectAdjust;
+extern	vmCvar_t		cg_fovViewmodel;
+extern	vmCvar_t		cg_fovViewmodelAdjust;
 extern	vmCvar_t		cg_missionstatusscreen;
 extern	vmCvar_t		cg_endcredits;
 extern	vmCvar_t		cg_updatedDataPadForcePower1;
@@ -711,7 +732,7 @@ void CG_CenterPrint( const char *str, int y );
 void CG_DrawHead( float x, float y, float w, float h, int clientNum, vec3_t headAngles );
 void CG_DrawActive( stereoFrame_t stereoView );
 void CG_ScrollText( const char *str, int iPixelWidth );
-void CG_CaptionText( const char *str, int sound, int y );
+void CG_CaptionText( const char *str, int sound );
 void CG_CaptionTextStop( void );
 void CG_GameText(int y );
 
@@ -720,7 +741,6 @@ void CG_GameText(int y );
 //
 void CG_DrawScrollText( void );
 void CG_DrawCaptionText( void );
-void CG_DrawGameText( void );
 void CG_DrawCenterString( void ); 
 
 
@@ -754,7 +774,6 @@ void CG_EntityEvent( centity_t *cent, vec3_t position );
 vec3_t *CG_SetEntitySoundPosition( centity_t *cent );
 void CG_AddPacketEntities( void );
 void CG_Beam( centity_t *cent, int color );
-void CG_Cylinder( vec3_t start, vec3_t end, float radius, vec3_t color );
 void CG_AdjustPositionForMover( const vec3_t in, int moverNum, int atTime, vec3_t out );
 
 void CG_PositionEntityOnTag( refEntity_t *entity, const refEntity_t *parent, 
@@ -928,7 +947,7 @@ void	cgi_SendClientCommand( const char *s );
 void	cgi_UpdateScreen( void );
 
 // model collision
-void	cgi_CM_LoadMap( const char *mapname );
+void	cgi_CM_LoadMap( const char *mapname, qboolean subBSP );
 int		cgi_CM_NumInlineModels( void );
 clipHandle_t cgi_CM_InlineModel( int index );		// 0 = world, 1+ = bmodels
 clipHandle_t cgi_CM_TempBoxModel( const vec3_t mins, const vec3_t maxs );//, const int contents );
@@ -1152,6 +1171,10 @@ void	cgi_UI_MenuPaintAll(void);
 void	cgi_UI_String_Init(void);
 
 void	SetWeaponSelectTime(void);
+
+void	CG_ClearLightStyles( void );
+void	CG_RunLightStyles( void );
+void	CG_SetLightstyle( int i );
 
 
 #endif	//__CG_LOCAL_H__

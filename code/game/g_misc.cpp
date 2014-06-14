@@ -1,17 +1,33 @@
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 // g_misc.c
-
-// leave this line at the top for all g_xxxx.cpp files...
-#include "g_headers.h"
-
 
 #include "g_local.h"
 #include "g_functions.h"
 #include "g_nav.h"
 #include "g_items.h"
+#include "../cgame/cg_local.h"
+#include "b_local.h"
 
 extern gentity_t *G_FindDoorTrigger( gentity_t *door );
 extern void G_SetEnemy( gentity_t *self, gentity_t *enemy );
-extern void SetMiscModelDefaults( gentity_t *ent, useFunc_t use_func, char *material, int solid_mask,int animFlag, 
+extern void SetMiscModelDefaults( gentity_t *ent, useFunc_t use_func, const char *material, int solid_mask,int animFlag, 
 									qboolean take_damage, qboolean damage_model);
 
 #define MAX_AMMO_GIVE 4
@@ -637,139 +653,16 @@ numPatches - integer number of patches to split the terrain brush into (default 
 terxels - integer number of terxels on a patch side (default 4) (2 <= count <= 8)
 seed - integer seed for random terrain generation (default 0)
 textureScale - float scale of texture (default 0.005)
-heightmap - name of heightmap data image to use, located in heightmaps/*.png. (must be PNG format)
-terrainDef - defines how the game textures the terrain (file is base/ext_data/rmg/*.terrain - default is grassyhills)
+heightmap - name of heightmap data image to use, located in heightmaps/xxx.png. (must be PNG format)
+terrainDef - defines how the game textures the terrain (file is base/ext_data/rmg/xxx.terrain - default is grassyhills)
 instanceDef - defines which bsp instances appear
-miscentDef - defines which client models spawn on the terrain (file is base/ext_data/rmg/*.miscents)
+miscentDef - defines which client models spawn on the terrain (file is base/ext_data/rmg/xxx.miscents)
 densityMap - how dense the client models are packed
 
 */
 void SP_terrain(gentity_t *ent) 
 {
-#ifdef _XBOX
-	assert(0);
-#else
-	char				temp[MAX_INFO_STRING];
-	char				final[MAX_QPATH];
-//	char				seed[MAX_QPATH];
-//	char				missionType[MAX_QPATH];
-//	char				soundSet[MAX_QPATH];
-	int					shaderNum, i;
-	char				*value;
-	int					terrainID;
-
-	//k, found a terrain, just set rmg to 1.
-	//This should always get set before RE_LoadWorldMap and all that is
-	//called which is all that matters.
-	//gi.cvar_set("RMG", "1");
-
-	VectorClear (ent->s.angles);
-	gi.SetBrushModel( ent, ent->model );
-
-	// Get the shader from the top of the brush
-//	shaderNum = gi.CM_GetShaderNum(s.modelindex);
-	shaderNum = 0;
-
-	//rww - Why not do this all the time? Not like terrain entities are used when you don't want them to be terrain.
-/*	if (g_RMG->integer)
-	{
-		gi.Cvar_VariableStringBuffer("RMG_seed", seed, MAX_QPATH);
-		gi.Cvar_VariableStringBuffer("RMG_mission", missionType, MAX_QPATH);
-
-	//	gi.Cvar_VariableStringBuffer("RMG_soundset", soundSet, MAX_QPATH);
-	//	gi.SetConfigstring(CS_AMBIENT_SOUNDSETS, soundSet );
-	}
-*/
-	// Arbitrary (but sane) limits to the number of terxels
-//	if((mTerxels < MIN_TERXELS) || (mTerxels > MAX_TERXELS))
-	{
-//		Com_printf("G_Terrain: terxels out of range - defaulting to 4\n");
-//		mTerxels = 4;
-	}
-
-	// Get info required for the common init
-	temp[0] = 0;
-	G_SpawnString("heightmap", "", &value);
-	Info_SetValueForKey(temp, "heightMap", value);
-
-	G_SpawnString("numpatches", "400", &value);
-	Info_SetValueForKey(temp, "numPatches", va("%d", atoi(value)));
-
-	G_SpawnString("terxels", "4", &value);
-	Info_SetValueForKey(temp, "terxels", va("%d", atoi(value)));
-
-	//Info_SetValueForKey(temp, "seed", seed);
-	Info_SetValueForKey(temp, "minx", va("%f", ent->mins[0]));
-	Info_SetValueForKey(temp, "miny", va("%f", ent->mins[1]));
-	Info_SetValueForKey(temp, "minz", va("%f", ent->mins[2]));
-	Info_SetValueForKey(temp, "maxx", va("%f", ent->maxs[0]));
-	Info_SetValueForKey(temp, "maxy", va("%f", ent->maxs[1]));
-	Info_SetValueForKey(temp, "maxz", va("%f", ent->maxs[2]));
-
-	Info_SetValueForKey(temp, "modelIndex", va("%d", ent->s.modelindex));
-
-	G_SpawnString("terraindef", "grassyhills", &value);
-	Info_SetValueForKey(temp, "terrainDef", value);
-
-	G_SpawnString("instancedef", "", &value);
-	Info_SetValueForKey(temp, "instanceDef", value);
-
-	G_SpawnString("miscentdef", "", &value);
-	Info_SetValueForKey(temp, "miscentDef", value);
-
-	//Info_SetValueForKey(temp, "missionType", missionType);
-	
-	for(i = 0; i < MAX_INSTANCE_TYPES; i++)
-	{
-		gi.Cvar_VariableStringBuffer(va("RMG_instance%d", i), final, MAX_QPATH);
-		if(strlen(final))
-		{
-			Info_SetValueForKey(temp, va("inst%d", i), final);
-		}
-	}
-
-	// Set additional data required on the client only
-	G_SpawnString("densitymap", "", &value);
-	Info_SetValueForKey(temp, "densityMap", value);
-
-	Info_SetValueForKey(temp, "shader", va("%d", shaderNum));
-	G_SpawnString("texturescale", "0.005", &value);
-	Info_SetValueForKey(temp, "texturescale", va("%f", atof(value)));
-
-	// Initialise the common aspects of the terrain
-	terrainID = gi.CM_RegisterTerrain(temp);
-//	SetCommon(common);
-
-	Info_SetValueForKey(temp, "terrainId", va("%d", terrainID));
-
-	// Let the entity know if it is random generated or not
-//	SetIsRandom(common->GetIsRandom());
-
-	// Let the game remember everything
-//	level.landScapes[terrainID] = ent;
-	//rww - I'm not doing this. Because it didn't even appear to be used. Is it?
-
-	// Send all the data down to the client
-	gi.SetConfigstring(CS_TERRAINS + terrainID, temp);
-
-	// Make sure the contents are properly set
-	ent->contents = CONTENTS_TERRAIN;
-	ent->svFlags = SVF_NOCLIENT;
-	ent->s.eFlags = EF_PERMANENT;
-	ent->s.eType = ET_TERRAIN;
-
-	// Hook into the world so physics will work
-	gi.linkentity(ent);
-
-	// If running RMG then initialize the terrain and handle team skins
-	//rww - Why not do this all the time? Not like terrain entities are used when you don't want them to be terrain.
-/* not using RMG
-	if ( g_RMG->integer ) 
-	{
-		gi.RMG_Init(terrainID);
-	}
-*/
-#endif	// _XBOX
+	G_FreeEntity( ent );
 }
 
 //rww - Called by skyportal entities. This will check through entities and flag them
@@ -1041,47 +934,7 @@ void SP_misc_camera( gentity_t *self )
 
 void Use_Shooter( gentity_t *ent, gentity_t *other, gentity_t *activator ) 
 {
-/*	vec3_t		dir;
-	float		deg;
-	vec3_t		up, right;
-*/
 	G_ActivateBehavior(ent,BSET_USE);
-/*
-	// see if we have a target
-	if ( ent->enemy ) {
-		VectorSubtract( ent->enemy->currentOrigin, ent->s.origin, dir );
-		VectorNormalize( dir );
-	} else {
-		VectorCopy( ent->movedir, dir );
-	}
-
-	// randomize a bit
-	PerpendicularVector( up, dir );
-	CrossProduct( up, dir, right );
-
-	deg = crandom() * ent->random;
-	VectorMA( dir, deg, up, dir );
-
-	deg = crandom() * ent->random;
-	VectorMA( dir, deg, right, dir );
-
-	VectorNormalize( dir );
-
-	switch ( ent->s.weapon ) 
-	{
-	case WP_GRENADE_LAUNCHER:
-		fire_grenade( ent, ent->s.origin, dir );
-		break;
-	case WP_ROCKET_LAUNCHER:
-		fire_rocket( ent, ent->s.origin, dir );
-		break;
-	case WP_PLASMAGUN:
-		fire_plasma( ent, ent->s.origin, dir );
-		break;
-	}
-
-	G_AddEvent( ent, EV_FIRE_WEAPON, 0 );
-*/
 }
 
 void InitShooter( gentity_t *ent, int weapon ) {
@@ -1740,7 +1593,7 @@ void touch_ammo_crystal_tigger( gentity_t *self, gentity_t *other, trace_t *trac
 		return;
 
 	// Only player can pick it up
-	if ( !other->s.number == 0 )
+	if ( other->s.number != 0 )
 	{
 		return;
 	}
@@ -2258,7 +2111,7 @@ USETARGET - when used it fires off target
 //------------------------------------------------------------
 void SP_misc_model_shield_power_converter( gentity_t *ent )
 {
-	SetMiscModelDefaults( ent, useF_shield_power_converter_use, "4", CONTENTS_SOLID, NULL, qfalse, NULL );
+	SetMiscModelDefaults( ent, useF_shield_power_converter_use, "4", CONTENTS_SOLID, 0, qfalse, qfalse );
 
 	ent->takedamage = qfalse;
 
@@ -2314,7 +2167,7 @@ void SP_misc_model_bomb_planted( gentity_t *ent )
 	VectorSet( ent->mins, -16, -16, 0 );
 	VectorSet( ent->maxs, 16, 16, 70 );
 
-	SetMiscModelDefaults( ent, useF_bomb_planted_use, "4", CONTENTS_SOLID, NULL, qfalse, NULL );
+	SetMiscModelDefaults( ent, useF_bomb_planted_use, "4", CONTENTS_SOLID, 0, qfalse, qfalse );
 
 	ent->takedamage = qfalse;
 
@@ -2408,7 +2261,7 @@ void SP_misc_model_beacon( gentity_t *ent )
 	VectorSet( ent->mins, -16, -16, 0 );
 	VectorSet( ent->maxs, 16, 16, 24 );
 
-	SetMiscModelDefaults( ent, useF_beacon_use, "4", CONTENTS_SOLID, NULL, qfalse, NULL );
+	SetMiscModelDefaults( ent, useF_beacon_use, "4", CONTENTS_SOLID, 0, qfalse, qfalse );
 
 	ent->takedamage = qfalse;
 
@@ -2459,7 +2312,7 @@ void SP_misc_shield_floor_unit( gentity_t *ent )
 	VectorSet( ent->mins, -16, -16, 0 );
 	VectorSet( ent->maxs, 16, 16, 32 );
 
-	SetMiscModelDefaults( ent, useF_shield_power_converter_use, "4", CONTENTS_SOLID, NULL, qfalse, NULL );
+	SetMiscModelDefaults( ent, useF_shield_power_converter_use, "4", CONTENTS_SOLID, 0, qfalse, qfalse );
 
 	ent->takedamage = qfalse;
 
@@ -2636,7 +2489,7 @@ USETARGET - when used it fires off target
 //------------------------------------------------------------
 void SP_misc_model_ammo_power_converter( gentity_t *ent )
 {
-	SetMiscModelDefaults( ent, useF_ammo_power_converter_use, "4", CONTENTS_SOLID, NULL, qfalse, NULL );
+	SetMiscModelDefaults( ent, useF_ammo_power_converter_use, "4", CONTENTS_SOLID, 0, qfalse, qfalse );
 
 	ent->takedamage = qfalse;
 
@@ -2668,7 +2521,7 @@ void SP_misc_ammo_floor_unit( gentity_t *ent )
 	VectorSet( ent->mins, -16, -16, 0 );
 	VectorSet( ent->maxs, 16, 16, 32 );
 
-	SetMiscModelDefaults( ent, useF_ammo_power_converter_use, "4", CONTENTS_SOLID, NULL, qfalse, NULL );
+	SetMiscModelDefaults( ent, useF_ammo_power_converter_use, "4", CONTENTS_SOLID, 0, qfalse, qfalse );
 
 	ent->takedamage = qfalse;
 
@@ -2758,7 +2611,7 @@ void SP_misc_model_welder( gentity_t *ent )
 	VectorSet( ent->mins, 336, -16, 0 );
 	VectorSet( ent->maxs, 368, 16, 32 );
 
-	SetMiscModelDefaults( ent, useF_welder_use, "4", CONTENTS_SOLID, NULL, qfalse, NULL );
+	SetMiscModelDefaults( ent, useF_welder_use, "4", CONTENTS_SOLID, 0, qfalse, qfalse );
 
 	ent->takedamage = qfalse;
 	ent->contents = 0;
@@ -2767,7 +2620,7 @@ void SP_misc_model_welder( gentity_t *ent )
 
 	ent->s.modelindex = G_ModelIndex( "models/map_objects/cairn/welder.glm" );
 //	ent->s.modelindex2 = G_ModelIndex( "models/map_objects/cairn/welder.md3" );
-	ent->playerModel = gi.G2API_InitGhoul2Model( ent->ghoul2, "models/map_objects/cairn/welder.glm", ent->s.modelindex, NULL, NULL, 0, 0 );
+	ent->playerModel = gi.G2API_InitGhoul2Model( ent->ghoul2, "models/map_objects/cairn/welder.glm", ent->s.modelindex, NULL_HANDLE, NULL_HANDLE, 0, 0 );
 	ent->s.radius = 400.0f;// the origin of the welder is offset by approximately 352, so we need the big radius
 
 	ent->e_ThinkFunc = thinkF_welder_think;
@@ -2818,11 +2671,11 @@ void SP_misc_model_jabba_cam( gentity_t *ent )
 	VectorSet( ent->mins, -60.0f, -8.0f, 0.0f );
 	VectorSet( ent->maxs, 60.0f, 8.0f, 16.0f );
 		
-	SetMiscModelDefaults( ent, useF_jabba_cam_use, "4", 0, NULL, qfalse, NULL );
+	SetMiscModelDefaults( ent, useF_jabba_cam_use, "4", 0, 0, qfalse, qfalse );
 	G_SetAngles( ent, ent->s.angles );
 
 	ent->s.modelindex = G_ModelIndex( "models/map_objects/nar_shaddar/jabacam/jabacam.glm" );
-	ent->playerModel = gi.G2API_InitGhoul2Model( ent->ghoul2, "models/map_objects/nar_shaddar/jabacam/jabacam.glm", ent->s.modelindex, NULL, NULL, 0, 0 );
+	ent->playerModel = gi.G2API_InitGhoul2Model( ent->ghoul2, "models/map_objects/nar_shaddar/jabacam/jabacam.glm", ent->s.modelindex, NULL_HANDLE, NULL_HANDLE, 0, 0 );
 	ent->s.radius = 150.0f;  //......
 	VectorSet( ent->s.modelScale, 1.0f, 1.0f, 1.0f );
 
@@ -3220,7 +3073,7 @@ void SP_misc_atst_drivable( gentity_t *ent )
 	extern void NPC_PrecacheAnimationCFG( const char *NPC_type );
 
 	ent->s.modelindex = G_ModelIndex( "models/players/atst/model.glm" );
-	ent->playerModel = gi.G2API_InitGhoul2Model( ent->ghoul2, "models/players/atst/model.glm", ent->s.modelindex, NULL, NULL, 0, 0 );
+	ent->playerModel = gi.G2API_InitGhoul2Model( ent->ghoul2, "models/players/atst/model.glm", ent->s.modelindex, NULL_HANDLE, NULL_HANDLE, 0, 0 );
 	ent->rootBone = gi.G2API_GetBoneIndex( &ent->ghoul2[ent->playerModel], "model_root", qtrue );
 	ent->craniumBone = gi.G2API_GetBoneIndex( &ent->ghoul2[ent->playerModel], "cranium", qtrue );	//FIXME: need to somehow set the anim/frame to the equivalent of BOTH_STAND1...  use to be that BOTH_STAND1 was the first frame of the glm, but not anymore
 	ent->s.radius = 320;
@@ -3239,7 +3092,7 @@ void SP_misc_atst_drivable( gentity_t *ent )
 	G_SoundIndex( "sound/chars/atst/atst_hatch_close" );
 
 	NPC_ATST_Precache();
-	ent->NPC_type = "atst";
+	ent->NPC_type = (char *)"atst";
 	NPC_PrecacheAnimationCFG( ent->NPC_type );
 	//open the hatch
 	misc_atst_setanim( ent, ent->rootBone, BOTH_STAND2 );
@@ -3294,4 +3147,9 @@ void SP_misc_weather_zone( gentity_t *ent )
 
 //	gi.WE_AddWeatherZone(ent->mins, ent->maxs);
 	G_FreeEntity(ent);
+}
+
+void SP_misc_cubemap( gentity_t *ent )
+{
+	G_FreeEntity( ent );
 }

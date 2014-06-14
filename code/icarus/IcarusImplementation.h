@@ -1,3 +1,21 @@
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 // IcarusImplementation.h
 #ifndef ICARUSIMPLEMENTATION_DEFINED
 #define ICARUSIMPLEMENTATION_DEFINED
@@ -6,16 +24,20 @@
 #include "IcarusInterface.h"
 #endif
 
+#ifdef _MSC_VER
 #pragma warning( disable : 4786 )	// identifier was truncated 
 #pragma warning (push, 3)			// go back down to 3 for the stl include
 #pragma warning (disable:4503)		// decorated name length xceeded, name was truncated
+#endif
 #include <string>
 #include <vector>
 #include <map>
 #include <list>
 #include <algorithm>
+#ifdef _MSC_VER
 #pragma warning (pop)
 #pragma warning (disable:4503)		// decorated name length xceeded, name was truncated
+#endif
 using namespace std;
 
 

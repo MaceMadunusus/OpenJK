@@ -1,5 +1,22 @@
-#ifndef __CG_CAMERA__
-#define __CG_CAMERA__
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
+#pragma once
 
 //
 // cg_camera.cpp
@@ -111,10 +128,6 @@ typedef struct camera_s
 	int		roff_frame;		// current frame in the roff data
 	int		next_roff_time;	// time when it's ok to apply the next roff frame 
 
-#ifdef _XBOX
-	qboolean	widescreen;
-#endif
-
 } camera_t;
 
 extern	bool		in_camera;
@@ -125,19 +138,11 @@ void CGCam_Init( void );
 void CGCam_Enable( void );
 void CGCam_Disable( void );
 
-#ifdef _XBOX
-void CGCam_SetWidescreen( qboolean widescreen );
-#endif
-
 void CGCam_SetPosition( vec3_t org );
 void CGCam_SetAngles( vec3_t ang );
 void CGCam_SetFOV( float FOV );
-#ifdef _XBOX
-void CGCam_SetFOV2( float FOV2 );
-#endif
 
 void CGCam_Zoom( float FOV, float duration );
-//void CGCam_Pan( vec3_t	dest, float duration );
 void CGCam_Pan( vec3_t dest, vec3_t panDirection, float duration );
 void CGCam_Move( vec3_t dest, float duration );
 void CGCam_Fade( vec4_t source, vec4_t dest, float duration );
@@ -160,5 +165,3 @@ void CGCam_StartRoff( char *roff );
 
 void CGCam_Smooth( float intensity, int duration );
 void CGCam_UpdateSmooth( vec3_t origin, vec3_t angles );
-
-#endif	//__CG_CAMERA__

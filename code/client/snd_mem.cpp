@@ -1,3 +1,21 @@
+/*
+This file is part of Jedi Academy.
+
+    Jedi Academy is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    Jedi Academy is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Jedi Academy.  If not, see <http://www.gnu.org/licenses/>.
+*/
+// Copyright 2001-2013 Raven Software
+
 // snd_mem.c: sound caching
 
 
@@ -8,9 +26,13 @@
 #include "snd_local.h"
 #include "cl_mp3.h"
 
+#include <string>
+
+#ifdef USE_OPENAL
 // Open AL
 void S_PreProcessLipSync(sfx_t *sfx);
 extern int s_UseOpenAL;
+#endif
 /*
 ===============================================================================
 
@@ -52,7 +74,7 @@ int GetLittleLong(void)
 	return val;
 }
 
-void FindNextChunk(char *name)
+void FindNextChunk(const char *name)
 {
 	while (1)
 	{
@@ -78,7 +100,7 @@ void FindNextChunk(char *name)
 	}
 }
 
-void FindChunk(char *name)
+void FindChunk(const char *name)
 {
 	last_chunk = iff_data;
 	FindNextChunk (name);
@@ -96,7 +118,7 @@ void DumpChunks(void)
 		memcpy (str, data_p, 4);
 		data_p += 4;
 		iff_chunk_len = GetLittleLong();
-		Com_Printf ("0x%x : %s (%d)\n", (int)(data_p - 4), str, iff_chunk_len);
+		Com_Printf ("0x%x : %s (%d)\n", (intptr_t)(data_p - 4), str, iff_chunk_len);
 		data_p += (iff_chunk_len + 1) & ~1;
 	} while (data_p < iff_end);
 }
@@ -617,15 +639,15 @@ static qboolean S_LoadSound_FileLoadAndNameAdjuster(char *psFilename, byte **pDa
 		// account for foreign voices...
 		//		
 		extern cvar_t* s_language;
-		if (s_language && stricmp("DEUTSCH",s_language->string)==0)
+		if (s_language && Q_stricmp("DEUTSCH",s_language->string)==0)
 		{				
 			strncpy(psVoice,"chr_d",5);	// same number of letters as "chars"
 		}
-		else if (s_language && stricmp("FRANCAIS",s_language->string)==0)
+		else if (s_language && Q_stricmp("FRANCAIS",s_language->string)==0)
 		{				
 			strncpy(psVoice,"chr_f",5);	// same number of letters as "chars"
 		}
-		else if (s_language && stricmp("ESPANOL",s_language->string)==0)
+		else if (s_language && Q_stricmp("ESPANOL",s_language->string)==0)
 		{				
 			strncpy(psVoice,"chr_e",5);	// same number of letters as "chars"
 		}
@@ -680,7 +702,6 @@ static qboolean S_LoadSound_FileLoadAndNameAdjuster(char *psFilename, byte **pDa
 	return qtrue;
 }
 
-
 // returns qtrue if this dir is allowed to keep loaded MP3s, else qfalse if they should be WAV'd instead...
 //
 // note that this is passed the original, un-language'd name
@@ -690,25 +711,15 @@ static qboolean S_LoadSound_FileLoadAndNameAdjuster(char *psFilename, byte **pDa
 //	they'd have noticed, but we therefore need to stop other levels using those. "sound/ambience" I can check for,
 //	but doors etc could be anything. Sigh...)
 //
-static qboolean S_LoadSound_DirIsAllowedToKeepMP3s(const char *psFilename)
+#define SOUND_CHARS_DIR "sound/chars/"
+#define SOUND_CHARS_DIR_LENGTH 12 // strlen( SOUND_CHARS_DIR )
+static qboolean S_LoadSound_DirIsAllowedToKeepMP3s( const char *psFilename )
 {
-	const char *psAllowedDirs[] = 
-	{
-		"sound/chars/",
-//		"sound/chr_d/"	// no need for this now, or any other language, since we'll always compare against english
-	};
-
-	int i;
-	for (i=0; i< (sizeof(psAllowedDirs) / sizeof(psAllowedDirs[0])); i++)
-	{
-		if (strnicmp(psFilename, psAllowedDirs[i], strlen(psAllowedDirs[i]))==0)
-			return qtrue;	// found a dir that's allowed to keep MP3s
-	}
+	if ( Q_stricmpn( psFilename, SOUND_CHARS_DIR, SOUND_CHARS_DIR_LENGTH ) == 0 )
+		return qtrue;	// found a dir that's allowed to keep MP3s
 
 	return qfalse;
 }
-
-
 
 /*
 ==============
@@ -727,7 +738,6 @@ static qboolean S_LoadSound_Actual( sfx_t *sfx )
 	int		size;
 	char	*psExt;
 	char	sLoadName[MAX_QPATH];
-	ALuint  Buffer;
 	
 	int		len = strlen(sfx->sSoundName);
 	if (len<5)
@@ -743,7 +753,7 @@ static qboolean S_LoadSound_Actual( sfx_t *sfx )
 	// make up a local filename to try wav/mp3 substitutes...
 	//	
 	Q_strncpyz(sLoadName, sfx->sSoundName, sizeof(sLoadName));	
-	strlwr( sLoadName );
+	Q_strlwr( sLoadName );
 	//
 	// Ensure name has an extension (which it must have, but you never know), and get ptr to it...
 	//
@@ -763,7 +773,7 @@ static qboolean S_LoadSound_Actual( sfx_t *sfx )
 
 	SND_TouchSFX(sfx);
 //=========
-	if (strnicmp(psExt,".mp3",4)==0)
+	if (Q_stricmpn(psExt,".mp3",4)==0)
 	{
 		// load MP3 file instead...
 		//		
@@ -778,6 +788,7 @@ static qboolean S_LoadSound_Actual( sfx_t *sfx )
 			{
 //				Com_DPrintf("(Keeping file \"%s\" as MP3)\n",sLoadName);
 
+#ifdef USE_OPENAL
 				if (s_UseOpenAL)
 				{
 					// Create space for lipsync data (4 lip sync values per streaming AL buffer)
@@ -786,6 +797,7 @@ static qboolean S_LoadSound_Actual( sfx_t *sfx )
 					else
 						sfx->lipSyncData = NULL;
 				}
+#endif
 			}
 			else
 			{
@@ -819,7 +831,23 @@ static qboolean S_LoadSound_Actual( sfx_t *sfx )
 
 						S_LoadSound_Finalize(&info,sfx,pbUnpackBuffer);
 
+#ifdef Q3_BIG_ENDIAN
+						// the MP3 decoder returns the samples in the correct endianness, but ResampleSfx byteswaps them,
+						// so we have to swap them again... 
+						sfx->fVolRange	= 0;
+						
+						for (int i = 0; i < sfx->iSoundLengthInSamples; i++)
+						{
+							sfx->pSoundData[i] = LittleShort(sfx->pSoundData[i]);
+							if (sfx->fVolRange < (abs(sfx->pSoundData[i]) >> 8))
+							{
+								sfx->fVolRange = abs(sfx->pSoundData[i]) >> 8;
+							}
+						}
+#endif
+
 						// Open AL
+#ifdef USE_OPENAL
 						if (s_UseOpenAL)
 						{
 							if (strstr(sfx->sSoundName, "chars"))
@@ -834,6 +862,7 @@ static qboolean S_LoadSound_Actual( sfx_t *sfx )
 							alGetError();
 
 							// Generate AL Buffer
+							ALuint Buffer;
 							alGenBuffers(1, &Buffer);
 							if (alGetError() == AL_NO_ERROR)
 							{
@@ -847,6 +876,7 @@ static qboolean S_LoadSound_Actual( sfx_t *sfx )
 								}
 							}
 						}
+#endif
 
 						Z_Free(pbUnpackBuffer);
 					}
@@ -890,6 +920,7 @@ static qboolean S_LoadSound_Actual( sfx_t *sfx )
 		ResampleSfx( sfx, info.rate, info.width, data + info.dataofs );
 
 		// Open AL
+#ifdef USE_OPENAL
 		if (s_UseOpenAL)
 		{
 			if ((strstr(sfx->sSoundName, "chars")) || (strstr(sfx->sSoundName, "CHARS")))
@@ -904,6 +935,7 @@ static qboolean S_LoadSound_Actual( sfx_t *sfx )
 			alGetError();
 
 			// Generate AL Buffer
+			ALuint Buffer;
 			alGenBuffers(1, &Buffer);
 			if (alGetError() == AL_NO_ERROR)
 			{
@@ -918,6 +950,7 @@ static qboolean S_LoadSound_Actual( sfx_t *sfx )
 				}
 			}
 		}
+#endif
 
 		Z_Free(samples);
 	}
@@ -942,7 +975,7 @@ qboolean S_LoadSound( sfx_t *sfx )
 	return bReturn;
 }
 
-
+#ifdef USE_OPENAL
 /*
 	Precalculate the lipsync values for the whole sample
 */
@@ -1012,4 +1045,4 @@ void S_PreProcessLipSync(sfx_t *sfx)
 			
 	sfx->lipSyncData[j] = sample;
 }
-
+#endif
